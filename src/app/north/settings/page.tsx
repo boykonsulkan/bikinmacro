@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { saveSettings } from './actions'
-import { Sliders, MessageSquare, Zap, CheckCircle, AlertCircle } from 'lucide-react'
+import { Sliders, MessageSquare, CheckCircle, AlertCircle } from 'lucide-react'
 import AiConfigClient from './AiConfigClient'
+import SystemContextForm from './SystemContextForm'
 
 const PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter' },
@@ -87,27 +88,7 @@ export default async function NorthSettingsPage({
           apiKeyUsage={apiKeyUsage}
         />
 
-        {/* System Context */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-              <Zap size={18} />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">System Context</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Custom instructions injected into every generation and chat prompt.</p>
-            </div>
-          </div>
-
-          <textarea
-            id="system_context"
-            name="system_context"
-            defaultValue={settings?.system_context || ''}
-            rows={8}
-            placeholder={`Contoh:\n- Semua macro harus kompatibel dengan Excel 2016\n- Selalu tambahkan logging ke sheet "Log"\n- Gunakan naming convention: camelCase untuk variabel`}
-            className="w-full rounded-lg px-4 py-3 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm resize-none font-mono"
-          />
-        </div>
+        <SystemContextForm initialValue={settings?.system_context || ''} />
 
         {/* Usage Limits */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">

@@ -31,11 +31,11 @@ export default async function NorthLayout({ children }: { children: React.ReactN
             <LayoutDashboard size={18} />
             Dashboard
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
+          <Link href="/north/users" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
             <Users size={18} />
             Users
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
+          <Link href="/north/transactions" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
             <CreditCard size={18} />
             Transactions
           </Link>

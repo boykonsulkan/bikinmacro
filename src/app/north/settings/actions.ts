@@ -12,14 +12,17 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/north/login')
 
-  const { error } = await supabase.from('admin_settings').update({
-    ai_provider: formData.get('ai_provider') as string,
-    ai_model: formData.get('ai_model') as string,
-    system_context: formData.get('system_context') as string,
-    free_credits_limit: parseInt(formData.get('free_credits_limit') as string) || 3,
-    max_chat_per_generation: parseInt(formData.get('max_chat_per_generation') as string) || 10,
+  const updateData: any = {
     updated_at: new Date().toISOString(),
-  }).eq('id', 1)
+  }
+
+  if (formData.has('ai_provider')) updateData.ai_provider = formData.get('ai_provider')
+  if (formData.has('ai_model')) updateData.ai_model = formData.get('ai_model')
+  if (formData.has('system_context')) updateData.system_context = formData.get('system_context')
+  if (formData.has('free_credits_limit')) updateData.free_credits_limit = parseInt(formData.get('free_credits_limit') as string) || 3
+  if (formData.has('max_chat_per_generation')) updateData.max_chat_per_generation = parseInt(formData.get('max_chat_per_generation') as string) || 10
+
+  const { error } = await supabase.from('admin_settings').update(updateData).eq('id', 1)
 
   revalidatePath('/north/settings')
   redirect(error ? '/north/settings?saved=error' : '/north/settings?saved=ok')
