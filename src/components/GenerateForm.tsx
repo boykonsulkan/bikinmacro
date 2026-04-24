@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Copy, Download, RefreshCw, Plus, Check, FileCode2 } from 'lucide-react'
+import Link from 'next/link'
+import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home } from 'lucide-react'
 import { codeToHtml } from 'shiki'
 import MacroChat from './MacroChat'
 
@@ -122,17 +123,27 @@ export default function GenerateForm({
         {/* Sub-header for Chat Mode */}
         <div className="bg-card border-b border-border px-6 py-3 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
+            <Link 
+              href="/"
+              className="text-muted hover:text-foreground transition-colors p-2 hover:bg-background rounded-lg flex items-center gap-2 text-sm font-medium"
+              title="Back to Home"
+            >
+              <Home size={18} />
+              <span className="hidden sm:inline">Home</span>
+            </Link>
+            <div className="h-4 w-px bg-border" />
             <button 
               onClick={resetForm}
-              className="text-muted hover:text-foreground transition-colors p-2 hover:bg-background rounded-lg"
+              className="text-muted hover:text-foreground transition-colors p-2 hover:bg-background rounded-lg flex items-center gap-2 text-sm font-medium"
               title="Start New"
             >
-              <Plus size={20} />
+              <Plus size={18} />
+              <span className="hidden sm:inline">New Macro</span>
             </button>
             <div className="h-4 w-px bg-border" />
             <div>
-              <p className="text-xs text-muted font-medium uppercase tracking-wider">Current Macro</p>
-              <h2 className="text-sm font-semibold truncate max-w-[200px] sm:max-w-md">
+              <p className="text-[10px] text-muted font-bold uppercase tracking-widest leading-none mb-1">Editing</p>
+              <h2 className="text-sm font-semibold truncate max-w-[150px] sm:max-w-md">
                 {prompt.slice(0, 50)}{prompt.length > 50 ? '...' : ''}
               </h2>
             </div>
