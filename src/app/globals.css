@@ -1,23 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #f97316;
-  --color-primary-hover: #ea580c;
-  --color-background: #fdfbf7;
-  --color-foreground: #11181c;
-  --color-card: #ffffff;
-  --color-card-foreground: #11181c;
-  --color-border: #eaeaea;
-  --color-muted: #8b8b8b;
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
   --font-sans: var(--font-inter);
 }
 
 :root {
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --background: #fdfbf7;
+  --foreground: #11181c;
+  --card: #ffffff;
+  --card-foreground: #11181c;
+  --border: #eaeaea;
+  --muted: #8b8b8b;
   color-scheme: light;
 }
 
+.dark {
+  --primary: #fb923c;
+  --primary-hover: #f97316;
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-foreground: #f1f5f9;
+  --border: #334155;
+  --muted: #94a3b8;
+  color-scheme: dark;
+}
+
 body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
 }
