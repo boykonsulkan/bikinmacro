@@ -12,7 +12,7 @@ export default function PricingPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Addon Pack */}
         <div className="bg-card border border-border rounded-2xl p-8 flex flex-col">
-          <h3 className="text-xl font-bold text-foreground mb-2">PRD Addon Pack</h3>
+          <h3 className="text-xl font-bold text-foreground mb-2">Macro Addon</h3>
           <div className="flex items-baseline gap-1 mb-2">
             <span className="text-3xl font-extrabold text-foreground">Rp 25.000</span>
           </div>
@@ -24,6 +24,9 @@ export default function PricingPage() {
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> 5 macro (sekali pakai)
+            </li>
+            <li className="flex items-start gap-3 text-sm text-foreground">
+              <Check size={18} className="text-primary shrink-0 mt-0.5" /> 5 refinement chats
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> Tidak ada expiry
@@ -57,6 +60,9 @@ export default function PricingPage() {
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> 20 macro / bulan
+            </li>
+            <li className="flex items-start gap-3 text-sm text-foreground">
+              <Check size={18} className="text-primary shrink-0 mt-0.5" /> 10 refinement chats
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> History ✓
@@ -96,13 +102,13 @@ export default function PricingPage() {
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> Unlimited macro
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
+              <Check size={18} className="text-primary shrink-0 mt-0.5" /> Unlimited refinements
+            </li>
+            <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> History ✓
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> Templates ✓
-            </li>
-            <li className="flex items-start gap-3 text-sm text-foreground">
-              <Check size={18} className="text-primary shrink-0 mt-0.5" /> Refine macro ✓
             </li>
           </ul>
 

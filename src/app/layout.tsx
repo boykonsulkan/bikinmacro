@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   description: "Dari kalimat jadi macro. Tanpa coding.",
 };
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,11 +26,14 @@ export default function RootLayout({
     <html
       lang="id"
       className={`${inter.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">
-        <LayoutShell navbar={<Navbar />} footer={<Footer />}>
-          {children}
-        </LayoutShell>
+      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
+        <ThemeProvider>
+          <LayoutShell navbar={<Navbar />} footer={<Footer />}>
+            {children}
+          </LayoutShell>
+        </ThemeProvider>
       </body>
     </html>
   );

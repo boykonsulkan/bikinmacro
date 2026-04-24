@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { logout } from '@/app/auth/actions'
+import UserNav from './UserNav'
 
 export default async function Navbar() {
   const supabase = await createClient()
@@ -8,59 +8,60 @@ export default async function Navbar() {
 
   let userPlan = 'free'
   let userRole = 'user'
+  let userName = ''
+  
   if (user) {
-    const { data: profile } = await supabase.from('users').select('plan, role').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('plan, role, email').eq('id', user.id).single()
     if (profile) {
       userPlan = profile.plan
       userRole = profile.role
+      // Extract name from email as fallback or use a 'name' field if you have one
+      userName = profile.email.split('@')[0]
     }
   }
 
   return (
-    <nav className="w-full flex justify-center border-b border-b-border h-16">
+    <nav className="w-full flex justify-center border-b border-border h-16 bg-background sticky top-0 z-40">
       <div className="w-full max-w-6xl flex justify-between items-center p-3 text-sm">
-        <div className="flex gap-5 items-center font-semibold text-lg text-primary">
+        <div className="flex gap-5 items-center font-bold text-xl text-primary tracking-tight">
           <Link href="/">BikinMacro</Link>
         </div>
         {!user ? (
           <div className="flex gap-4 items-center">
-            <Link href="/auth/login" className="text-muted hover:text-foreground transition-colors">
+            <Link href="/auth/login" className="text-muted hover:text-foreground transition-colors font-medium">
               Masuk
             </Link>
-            <Link href="/auth/register" className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-md transition-colors">
+            <Link href="/auth/register" className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-bold transition-all hover:scale-105 shadow-lg shadow-primary/20">
               Coba Gratis
             </Link>
           </div>
         ) : (
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 mr-2">
-              <span className="bg-card border border-border px-3 py-1 rounded-full text-xs font-medium text-muted uppercase">
-                Plan: {userPlan}
-              </span>
-              <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">
-                Upgrade
-              </Link>
+          <div className="flex items-center gap-6">
+            <div className="hidden md:flex items-center gap-6 text-muted font-medium">
+               <Link href="/generate" className="hover:text-foreground transition-colors">
+                 Generate
+               </Link>
+               {userPlan !== 'free' && (
+                 <Link href="/history" className="hover:text-foreground transition-colors">
+                   History
+                 </Link>
+               )}
+               {userRole === 'admin' && (
+                 <Link href="/north" className="text-orange-500 hover:text-orange-600 transition-colors font-bold">
+                   Admin
+                 </Link>
+               )}
             </div>
-            {userRole === 'admin' && (
-              <Link href="/north" className="text-muted hover:text-foreground transition-colors font-bold text-orange-400">
-                Admin
-              </Link>
-            )}
             
-            <Link href="/generate" className="text-muted hover:text-foreground transition-colors">
-              Generate
-            </Link>
-            {userPlan !== 'free' && (
-              <Link href="/history" className="text-muted hover:text-foreground transition-colors">
-                History
-              </Link>
-            )}
-            
-            <form action={logout}>
-              <button className="text-muted hover:text-foreground transition-colors">
-                Keluar
-              </button>
-            </form>
+            <div className="h-6 w-px bg-border hidden md:block" />
+
+            <div className="flex items-center gap-4">
+              <UserNav 
+                userEmail={user.email || ''} 
+                userName={userName} 
+                plan={userPlan} 
+              />
+            </div>
           </div>
         )}
       </div>

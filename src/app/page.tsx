@@ -55,9 +55,17 @@ export default async function Home() {
           </div>
 
           {isLowCredits && (
-            <div className="bg-orange-500/10 border border-orange-500/50 p-4 rounded-lg flex justify-between items-center">
-              <p className="text-orange-400 font-medium">Kuota kamu hampir habis!</p>
-              <Link href="/pricing" className="text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded-md transition-colors">
+            <div className={`border p-4 rounded-lg flex justify-between items-center ${
+              creditsUsed >= creditsLimit 
+                ? 'bg-red-500/10 border-red-500/50' 
+                : 'bg-orange-500/10 border-orange-500/50'
+            }`}>
+              <p className={`font-medium ${creditsUsed >= creditsLimit ? 'text-red-400' : 'text-orange-400'}`}>
+                {creditsUsed >= creditsLimit ? 'Kuota kamu sudah habis!' : 'Kuota kamu hampir habis!'}
+              </p>
+              <Link href="/pricing" className={`text-sm text-white px-3 py-1 rounded-md transition-colors ${
+                creditsUsed >= creditsLimit ? 'bg-red-500 hover:bg-red-600' : 'bg-orange-500 hover:bg-orange-600'
+              }`}>
                 Upgrade
               </Link>
             </div>

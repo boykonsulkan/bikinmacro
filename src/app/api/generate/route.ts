@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     // Quota check
     const { data: profile } = await supabase
       .from('users')
-      .select('credits_used, credits_limit, role')
+      .select('credits_used, credits_limit, role, plan')
       .eq('id', user.id)
       .single()
 
@@ -110,10 +110,16 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
       .select('id')
       .single()
 
+    // Calculate max chats based on plan
+    let maxChat = settings?.max_chat_per_generation ?? 10
+    if (profile.plan === 'free') maxChat = 5
+    if (profile.plan === 'starter') maxChat = 10
+    if (profile.plan === 'pro') maxChat = 999 // Unlimited
+
     return NextResponse.json({
       vba_code: vbaCode,
       generation_id: inserted?.id,
-      max_chat_per_generation: settings?.max_chat_per_generation ?? 10
+      max_chat_per_generation: maxChat
     })
 
   } catch (error: any) {

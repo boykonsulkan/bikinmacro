@@ -55,11 +55,15 @@ export async function POST(req: Request) {
       .eq('id', 1)
       .single()
 
-    const maxChat = settings?.max_chat_per_generation ?? 10
-
     // Admins get unlimited chat
-    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('role, plan').eq('id', user.id).single()
     const isAdmin = profile?.role === 'admin'
+
+    // Calculate max chats based on plan
+    let maxChat = settings?.max_chat_per_generation ?? 10
+    if (profile?.plan === 'free') maxChat = 5
+    if (profile?.plan === 'starter') maxChat = 10
+    if (profile?.plan === 'pro') maxChat = 999 // Unlimited
 
     // Count how many user messages exist for this generation
     const { count: chatCount } = await supabase
