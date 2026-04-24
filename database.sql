@@ -36,6 +36,16 @@ ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 
+-- Admin check function (bypasses RLS to avoid infinite recursion)
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- users: users can read/update own row. Admin (role='admin') can read all.
 CREATE POLICY "Users can read own row" ON public.users
   FOR SELECT USING (auth.uid() = id);
@@ -44,9 +54,7 @@ CREATE POLICY "Users can update own row" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
 CREATE POLICY "Admins can read all users" ON public.users
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT USING ( public.is_admin() );
 
 -- generations: users can read/insert own rows. Admin can read all.
 CREATE POLICY "Users can insert own generation" ON public.generations
@@ -56,18 +64,14 @@ CREATE POLICY "Users can read own generation" ON public.generations
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can read all generations" ON public.generations
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT USING ( public.is_admin() );
 
 -- payments: users can read own rows. Admin can read all.
 CREATE POLICY "Users can read own payment" ON public.payments
   FOR SELECT USING (auth.uid() = user_id);
 
 CREATE POLICY "Admins can read all payments" ON public.payments
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT USING ( public.is_admin() );
 
 -- Trigger to create public.user on auth.users insert
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -110,9 +114,7 @@ CREATE POLICY "Authenticated users can read settings" ON public.admin_settings
   FOR SELECT USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Admins can update settings" ON public.admin_settings
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR UPDATE USING ( public.is_admin() );
 
 -- Generation chats: stores the refinement chat history per generated macro
 CREATE TABLE public.generation_chats (
@@ -133,6 +135,4 @@ CREATE POLICY "Users can insert own chats" ON public.generation_chats
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Admins can read all chats" ON public.generation_chats
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
-  );
+  FOR SELECT USING ( public.is_admin() );

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { saveSettings } from './actions'
-import { Bot, Sliders, MessageSquare, Zap, CheckCircle, AlertCircle } from 'lucide-react'
+import { Sliders, MessageSquare, Zap, CheckCircle, AlertCircle } from 'lucide-react'
+import AiConfigClient from './AiConfigClient'
 
 const PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter' },
@@ -43,6 +44,22 @@ export default async function NorthSettingsPage({
   const currentProvider = settings?.ai_provider || 'openrouter'
   const { saved } = await searchParams
 
+  let apiKeyUsage = null
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
+        next: { revalidate: 60 }
+      })
+      const data = await res.json()
+      if (data && data.data) {
+        apiKeyUsage = data.data
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -64,57 +81,11 @@ export default async function NorthSettingsPage({
       )}
 
       <form action={saveSettings} className="space-y-6">
-        {/* AI Configuration */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 bg-violet-50 text-violet-600 rounded-lg">
-              <Bot size={18} />
-            </div>
-            <h2 className="text-base font-semibold text-gray-900">AI Configuration</h2>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="ai_provider">
-              Provider
-            </label>
-            <select
-              id="ai_provider"
-              name="ai_provider"
-              defaultValue={currentProvider}
-              className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm"
-            >
-              {PROVIDERS.map(p => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="ai_model">
-              Model Name
-            </label>
-            <input
-              id="ai_model"
-              name="ai_model"
-              defaultValue={settings?.ai_model || ''}
-              placeholder="e.g. anthropic/claude-3-5-sonnet"
-              className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm"
-            />
-            <div className="mt-2">
-              <p className="text-xs text-gray-400 mb-1.5">Common models for <span className="font-medium">{currentProvider}</span>:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(MODEL_HINTS[currentProvider] || []).map(m => (
-                  <code
-                    key={m}
-                    className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md border border-gray-200 cursor-default select-all"
-                  >
-                    {m}
-                  </code>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <AiConfigClient 
+          initialProvider={currentProvider} 
+          initialModel={settings?.ai_model || ''}
+          apiKeyUsage={apiKeyUsage}
+        />
 
         {/* System Context */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
