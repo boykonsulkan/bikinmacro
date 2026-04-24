@@ -171,7 +171,7 @@ export default function GenerateForm({
               </div>
             </div>
             
-            <div className="p-4 overflow-x-auto text-sm bg-[#0d1117] flex-1 custom-scrollbar">
+            <div className="p-4 overflow-x-auto text-sm bg-gray-50 flex-1 custom-scrollbar text-foreground">
                {outputHtml ? (
                  <div dangerouslySetInnerHTML={{ __html: outputHtml }} />
                ) : (

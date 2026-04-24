@@ -42,7 +42,7 @@ export default async function Navbar() {
               </Link>
             </div>
             {userRole === 'admin' && (
-              <Link href="/admin" className="text-muted hover:text-foreground transition-colors font-bold text-orange-400">
+              <Link href="/north" className="text-muted hover:text-foreground transition-colors font-bold text-orange-400">
                 Admin
               </Link>
             )}

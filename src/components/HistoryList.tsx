@@ -105,7 +105,7 @@ export default function HistoryList({ generations }: { generations: Generation[]
                     <Copy size={14} /> {copiedId === 'modal' ? 'Tersalin' : 'Salin Kode'}
                   </button>
                 </div>
-                <pre className="bg-[#0d1117] p-4 rounded-lg overflow-x-auto text-sm text-gray-300 custom-scrollbar border border-border">
+                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm text-foreground custom-scrollbar border border-border">
                   <code>{selectedMacro.output_vba}</code>
                 </pre>
               </div>

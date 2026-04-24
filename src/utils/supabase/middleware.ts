@@ -36,7 +36,8 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
+  const isNorthRoute = request.nextUrl.pathname.startsWith('/north')
+  const isNorthLoginRoute = request.nextUrl.pathname === '/north/login'
   const isProtectedRoute = ['/generate', '/history', '/settings'].some(path => request.nextUrl.pathname.startsWith(path))
 
   if (isAuthRoute && user) {
@@ -47,7 +48,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
-  if (isAdminRoute && user) {
+  // If trying to access North login while already authenticated as admin, go to /north
+  if (isNorthLoginRoute && user) {
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+    if (profile && profile.role === 'admin') {
+      return NextResponse.redirect(new URL('/north', request.url))
+    }
+  }
+
+  // Protect /north routes (excluding the login page itself)
+  if (isNorthRoute && !isNorthLoginRoute) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/north/login', request.url))
+    }
+    
     // Check if user has admin role
     const { data: profile } = await supabase
       .from('users')
@@ -58,8 +72,6 @@ export async function updateSession(request: NextRequest) {
     if (!profile || profile.role !== 'admin') {
       return NextResponse.redirect(new URL('/', request.url))
     }
-  } else if (isAdminRoute && !user) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
