@@ -13,10 +13,12 @@ export default function MacroChat({
   generationId,
   maxChats,
   onCodeUpdate,
+  initialPrompt,
 }: {
   generationId: string
   maxChats: number
   onCodeUpdate: (rawCode: string, highlightedHtml: string) => void
+  initialPrompt?: string
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -27,6 +29,13 @@ export default function MacroChat({
 
   const chatsRemaining = maxChats - chatsUsed
   const isExhausted = maxChats > 0 && chatsRemaining <= 0
+
+  // Add initial prompt to messages if it's new
+  useEffect(() => {
+    if (initialPrompt && messages.length === 0) {
+      setMessages([{ role: 'user', content: initialPrompt }])
+    }
+  }, [initialPrompt])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -65,7 +74,7 @@ export default function MacroChat({
       setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
       setChatsUsed(data.chats_used)
 
-      const html = await codeToHtml(data.vba_code, { lang: 'vba', theme: 'github-dark' })
+      const html = await codeToHtml(data.vba_code, { lang: 'vb', theme: 'github-dark' })
       onCodeUpdate(data.vba_code, html)
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan.')
@@ -83,12 +92,12 @@ export default function MacroChat({
   }
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden mt-8">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-background">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-card/50">
         <div className="flex items-center gap-2.5">
           <MessageSquare size={16} className="text-primary" />
-          <span className="text-sm font-semibold text-foreground">Modifikasi dengan Chat</span>
+          <span className="text-sm font-semibold text-foreground">Chat Refinement</span>
         </div>
         {maxChats > 0 ? (
           <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
@@ -108,77 +117,72 @@ export default function MacroChat({
       </div>
 
       {/* Messages */}
-      {messages.length > 0 && (
-        <div ref={scrollRef} className="p-4 space-y-3 max-h-64 overflow-y-auto bg-background/50">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
-                m.role === 'user'
-                  ? 'bg-primary text-white rounded-br-sm'
-                  : 'bg-card border border-border text-foreground rounded-bl-sm'
-              }`}>
-                {m.role === 'assistant' && (
-                  <span className="block text-xs text-muted mb-1">Perubahan diterapkan</span>
-                )}
-                {m.content}
-              </div>
+      <div ref={scrollRef} className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar bg-background">
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[90%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+              m.role === 'user'
+                ? 'bg-primary text-white rounded-br-sm shadow-sm'
+                : 'bg-card border border-border text-foreground rounded-bl-sm shadow-sm'
+            }`}>
+              {m.role === 'assistant' && (
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-1">BikinMacro AI</span>
+              )}
+              {m.content}
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-card border border-border px-3.5 py-2 rounded-2xl rounded-bl-sm flex items-center gap-2 text-sm text-muted">
-                <RefreshCw size={12} className="animate-spin" />
-                Memproses...
-              </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-card border border-border px-4 py-2.5 rounded-2xl rounded-bl-sm flex items-center gap-2 text-sm text-muted shadow-sm">
+              <RefreshCw size={12} className="animate-spin" />
+              Memikirkan perubahan...
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        {error && (
+          <div className="p-3 bg-red-900/10 border border-red-900/20 text-red-500 rounded-xl text-xs flex items-center gap-2">
+            <AlertCircle size={14} />
+            {error}
+          </div>
+        )}
+      </div>
 
-      {/* Error */}
-      {error && (
-        <div className="mx-4 my-2 p-3 bg-red-900/20 border border-red-900 text-red-400 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="p-4 border-t border-border bg-background">
+      {/* Input bar - bottom fixed */}
+      <div className="p-4 border-t border-border bg-card/30">
         {maxChats === 0 ? (
-          <p className="text-sm text-muted text-center py-1">
+          <p className="text-xs text-muted text-center py-2">
             Chat refinement saat ini dinonaktifkan oleh admin.
           </p>
         ) : isExhausted ? (
-          <div className="flex items-center justify-center gap-2 py-1 text-sm text-muted">
-            <Lock size={14} />
+          <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted">
+            <Lock size={12} />
             <span>Batas chat ({maxChats}x) sudah habis untuk macro ini.</span>
           </div>
         ) : (
-          <div className="flex gap-2">
+          <div className="relative group">
             <input
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Deskripsikan perubahan yang diinginkan..."
+              placeholder="Berikan instruksi perubahan..."
               disabled={isLoading}
-              className="flex-1 rounded-xl px-4 py-2.5 bg-background border border-border focus:outline-none focus:border-primary transition-colors text-sm text-foreground placeholder:text-muted disabled:opacity-50"
+              className="w-full rounded-2xl pl-4 pr-12 py-3 bg-background border border-border focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all text-sm text-foreground placeholder:text-muted disabled:opacity-50"
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="bg-primary hover:bg-primary-hover disabled:bg-primary/40 disabled:cursor-not-allowed text-white p-2.5 rounded-xl transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary hover:bg-primary-hover disabled:bg-primary/40 disabled:cursor-not-allowed text-white p-2 rounded-xl transition-all"
             >
               <Send size={16} />
             </button>
           </div>
         )}
-        {messages.length === 0 && !isExhausted && maxChats > 0 && (
-          <p className="text-xs text-muted mt-2">
-            Contoh: "Tambahkan validasi input di kolom B", "Ubah nama sheet menjadi 'Data'"
-          </p>
-        )}
       </div>
     </div>
   )
 }
+
+import { AlertCircle } from 'lucide-react'
+
