@@ -7,10 +7,12 @@ export default async function Navbar() {
   const { data: { user } } = await supabase.auth.getUser()
 
   let userPlan = 'free'
+  let userRole = 'user'
   if (user) {
-    const { data: profile } = await supabase.from('users').select('plan').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('plan, role').eq('id', user.id).single()
     if (profile) {
       userPlan = profile.plan
+      userRole = profile.role
     }
   }
 
@@ -39,6 +41,11 @@ export default async function Navbar() {
                 Upgrade
               </Link>
             </div>
+            {userRole === 'admin' && (
+              <Link href="/admin" className="text-muted hover:text-foreground transition-colors font-bold text-orange-400">
+                Admin
+              </Link>
+            )}
             
             <Link href="/generate" className="text-muted hover:text-foreground transition-colors">
               Generate
