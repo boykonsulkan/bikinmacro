@@ -73,8 +73,12 @@ CREATE POLICY "Admins can read all payments" ON public.payments
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.users (id, email)
-  VALUES (new.id, new.email);
+  INSERT INTO public.users (id, email, role)
+  VALUES (
+    new.id, 
+    new.email,
+    CASE WHEN new.email = 'boy.konsulkan@gmail.com' THEN 'admin' ELSE 'user' END
+  );
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
