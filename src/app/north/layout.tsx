@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { LayoutDashboard, Users, CreditCard, Home, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, CreditCard, Home, SlidersHorizontal } from 'lucide-react'
 
 export default async function NorthLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -38,6 +38,10 @@ export default async function NorthLayout({ children }: { children: React.ReactN
           <Link href="#" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
             <CreditCard size={18} />
             Transactions
+          </Link>
+          <Link href="/north/settings" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-muted hover:bg-card-foreground/5 transition-colors">
+            <SlidersHorizontal size={18} />
+            Settings
           </Link>
         </nav>
         

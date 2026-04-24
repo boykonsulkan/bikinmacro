@@ -86,3 +86,53 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Allow users to update their own generation (needed for chat code updates)
+CREATE POLICY "Users can update own generation" ON public.generations
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Admin settings: singleton row that controls AI config and usage limits
+CREATE TABLE public.admin_settings (
+  id                      INT PRIMARY KEY DEFAULT 1,
+  ai_provider             TEXT DEFAULT 'openrouter',
+  ai_model                TEXT DEFAULT 'anthropic/claude-3-5-sonnet',
+  system_context          TEXT DEFAULT '',
+  free_credits_limit      INT DEFAULT 3,
+  max_chat_per_generation INT DEFAULT 10,
+  updated_at              TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO public.admin_settings (id) VALUES (1);
+
+ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can read settings" ON public.admin_settings
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Admins can update settings" ON public.admin_settings
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+  );
+
+-- Generation chats: stores the refinement chat history per generated macro
+CREATE TABLE public.generation_chats (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  generation_id UUID REFERENCES public.generations(id) ON DELETE CASCADE,
+  user_id       UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  role          TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content       TEXT NOT NULL,
+  created_at    TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE public.generation_chats ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own chats" ON public.generation_chats
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own chats" ON public.generation_chats
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can read all chats" ON public.generation_chats
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'admin')
+  );

@@ -70,7 +70,7 @@ export async function updateSession(request: NextRequest) {
       .single()
 
     if (!profile || profile.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url))
+      return NextResponse.redirect(new URL('/north/login?message=Akses+ditolak.+Login+dengan+akun+admin.', request.url))
     }
   }
 

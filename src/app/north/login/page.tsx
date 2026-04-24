@@ -1,4 +1,4 @@
-import { login } from '@/app/auth/actions'
+import { adminLogin } from '@/app/auth/actions'
 import Link from 'next/link'
 
 export default async function NorthLoginPage({
@@ -18,7 +18,7 @@ export default async function NorthLoginPage({
           <p className="text-sm text-gray-500 mt-1">Sign in with your administrative credentials.</p>
         </div>
 
-        <form action={login} className="space-y-4">
+        <form action={adminLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
               Admin Email

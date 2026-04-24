@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import LayoutShell from "@/components/LayoutShell";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,11 +26,9 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Navbar />
-        <main className="flex-1 flex flex-col">
+        <LayoutShell navbar={<Navbar />} footer={<Footer />}>
           {children}
-        </main>
-        <Footer />
+        </LayoutShell>
       </body>
     </html>
   );
