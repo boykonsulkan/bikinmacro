@@ -29,10 +29,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     }
 
+    const serverKey = process.env.MIDTRANS_SERVER_KEY?.trim()
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY?.trim()
+    const mode = process.env.NEXT_PUBLIC_MIDTRANS_MODE?.trim() || 'sandbox'
+
+    if (!serverKey || !clientKey) {
+      console.error('Midtrans keys are missing in environment variables')
+      return NextResponse.json({ error: 'Konfigurasi pembayaran belum lengkap (Server/Client Key Kosong).' }, { status: 500 })
+    }
+
     const snap = new midtransClient.Snap({
-      isProduction: process.env.NEXT_PUBLIC_MIDTRANS_MODE === 'production',
-      serverKey: process.env.MIDTRANS_SERVER_KEY,
-      clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
+      isProduction: mode === 'production',
+      serverKey: serverKey,
+      clientKey: clientKey
     })
 
     const orderId = `BM-${user.id.slice(0, 8)}-${Date.now()}`
