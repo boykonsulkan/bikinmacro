@@ -1,7 +1,20 @@
 import Link from 'next/link'
 import { Check, X } from 'lucide-react'
+import { createClient } from '@/utils/supabase/server'
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const getPaymentLink = (baseUrl: string) => {
+    if (!user) return '/auth/login'
+    return `${baseUrl}?custom_field1=${user.id}`
+  }
+
+  const addonLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_ADDON || "https://app.midtrans.com/payment-links/062a6963-e0fc-41da-ba5e-ff58ef6661a6")
+  const starterLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_STARTER || "https://app.midtrans.com/payment-links/36b42e0b-f53e-425f-8745-ee292e1ef7ec")
+  const proLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_PRO || "https://app.midtrans.com/payment-links/45e4f052-714a-400a-af43-adcc0fcc6435")
+
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto p-6 sm:p-12">
       <div className="text-center mb-16 mt-8">
@@ -37,11 +50,11 @@ export default function PricingPage() {
           </ul>
 
           <Link 
-            href={process.env.NEXT_PUBLIC_MIDTRANS_LINK_ADDON || "#"} 
-            target="_blank"
+            href={addonLink}
+            target={user ? "_blank" : "_self"}
             className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
           >
-            Beli Sekarang
+            {user ? 'Beli Sekarang' : 'Login untuk Membeli'}
           </Link>
         </div>
 
@@ -73,11 +86,11 @@ export default function PricingPage() {
           </ul>
 
           <Link 
-            href={process.env.NEXT_PUBLIC_MIDTRANS_LINK_STARTER || "#"} 
-            target="_blank"
+            href={starterLink}
+            target={user ? "_blank" : "_self"}
             className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
           >
-            Pilih Starter
+            {user ? 'Pilih Starter' : 'Login untuk Membeli'}
           </Link>
         </div>
 
@@ -113,11 +126,11 @@ export default function PricingPage() {
           </ul>
 
           <Link 
-            href={process.env.NEXT_PUBLIC_MIDTRANS_LINK_PRO || "#"} 
-            target="_blank"
+            href={proLink}
+            target={user ? "_blank" : "_self"}
             className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-medium transition-colors text-center shadow-lg shadow-primary/20"
           >
-            Pilih Pro
+            {user ? 'Pilih Pro' : 'Login untuk Membeli'}
           </Link>
         </div>
       </div>

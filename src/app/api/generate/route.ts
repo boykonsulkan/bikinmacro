@@ -41,17 +41,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
 
-    // Fetch admin settings for AI config and limits
-    const { data: settings } = await supabase
-      .from('admin_settings')
-      .select('ai_provider, ai_model, system_context, free_credits_limit, max_chat_per_generation')
-      .eq('id', 1)
-      .single()
-
-    const aiProvider = settings?.ai_provider || getFallbackProvider()
-    const aiModel = settings?.ai_model || ''
-    const systemContext = settings?.system_context || ''
-
     // Quota check
     const { data: profile } = await supabase
       .from('users')
@@ -63,8 +52,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
     }
 
+    // Fetch settings for the user's plan
+    const { data: settings } = await supabase
+      .from('plan_settings')
+      .select('ai_provider, ai_model, system_context, credits_limit, max_chat_per_generation')
+      .eq('plan', profile.plan || 'free')
+      .single()
+
+    const aiProvider = settings?.ai_provider || getFallbackProvider()
+    const aiModel = settings?.ai_model || ''
+    const systemContext = settings?.system_context || ''
+
     const isAdmin = profile.role === 'admin'
-    if (!isAdmin && profile.credits_used >= profile.credits_limit) {
+    if (!isAdmin && profile.credits_used >= (settings?.credits_limit ?? profile.credits_limit)) {
       return NextResponse.json({ error: 'Quota exhausted' }, { status: 402 })
     }
 
@@ -110,11 +110,8 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
       .select('id')
       .single()
 
-    // Calculate max chats based on plan
-    let maxChat = settings?.max_chat_per_generation ?? 10
-    if (profile.plan === 'free') maxChat = 5
-    if (profile.plan === 'starter') maxChat = 10
-    if (profile.plan === 'pro') maxChat = 999 // Unlimited
+    // Calculate max chats based on plan settings
+    const maxChat = settings?.max_chat_per_generation ?? 10
 
     return NextResponse.json({
       vba_code: vbaCode,

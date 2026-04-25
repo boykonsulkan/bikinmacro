@@ -33,17 +33,18 @@ const MODEL_HINTS: Record<string, string[]> = {
 export default async function NorthSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string }>
+  searchParams: Promise<{ saved?: string; plan?: string }>
 }) {
+  const { saved, plan: selectedPlan = 'free' } = await searchParams
   const supabase = await createClient()
+  
   const { data: settings } = await supabase
-    .from('admin_settings')
+    .from('plan_settings')
     .select('*')
-    .eq('id', 1)
+    .eq('plan', selectedPlan)
     .single()
 
   const currentProvider = settings?.ai_provider || 'openrouter'
-  const { saved } = await searchParams
 
   let apiKeyUsage = null
   if (process.env.OPENROUTER_API_KEY) {
@@ -61,17 +62,42 @@ export default async function NorthSettingsPage({
     }
   }
 
+  const plans = [
+    { id: 'free', label: 'Free' },
+    { id: 'starter', label: 'Starter' },
+    { id: 'pro', label: 'Pro' },
+  ]
+
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Configure AI provider, system context, and usage limits.</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Settings</h1>
+          <p className="text-sm text-gray-500 mt-1">Configure AI provider, system context, and usage limits per plan.</p>
+        </div>
+      </div>
+
+      {/* Plan Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        {plans.map((p) => (
+          <a
+            key={p.id}
+            href={`/north/settings?plan=${p.id}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              selectedPlan === p.id
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {p.label}
+          </a>
+        ))}
       </div>
 
       {saved === 'ok' && (
         <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
           <CheckCircle size={16} />
-          Pengaturan berhasil disimpan.
+          Pengaturan untuk plan <strong>{selectedPlan}</strong> berhasil disimpan.
         </div>
       )}
       {saved === 'error' && (
@@ -82,6 +108,8 @@ export default async function NorthSettingsPage({
       )}
 
       <form action={saveSettings} className="space-y-6">
+        <input type="hidden" name="plan" value={selectedPlan} />
+        
         <AiConfigClient 
           initialProvider={currentProvider} 
           initialModel={settings?.ai_model || ''}
@@ -97,22 +125,22 @@ export default async function NorthSettingsPage({
               <Sliders size={18} />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Usage Limits</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Applies to new users. Existing users keep their current limits.</p>
+              <h2 className="text-base font-semibold text-gray-900">Usage Limits — {selectedPlan.toUpperCase()}</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Specific limits for users on the {selectedPlan} plan.</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="free_credits_limit">
-                Free Plan — Macros / month
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="credits_limit">
+                Macros / month
               </label>
               <input
-                id="free_credits_limit"
-                name="free_credits_limit"
+                id="credits_limit"
+                name="credits_limit"
                 type="number"
                 min={0}
-                defaultValue={settings?.free_credits_limit ?? 3}
+                defaultValue={settings?.credits_limit ?? 3}
                 className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm"
               />
             </div>
@@ -142,7 +170,7 @@ export default async function NorthSettingsPage({
             type="submit"
             className="bg-black hover:bg-gray-800 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition-colors"
           >
-            Save Settings
+            Save {selectedPlan.toUpperCase()} Settings
           </button>
         </div>
       </form>

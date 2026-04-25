@@ -242,7 +242,7 @@ export default function GenerateForm({
         </label>
         
         <textarea
-          className="w-full h-48 rounded-2xl px-6 py-5 bg-gray-50 border border-gray-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-lg resize-none placeholder:text-gray-300"
+          className="w-full h-48 rounded-2xl px-6 py-5 bg-gray-50 border border-gray-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-lg resize-none placeholder:text-gray-300 text-gray-900"
           placeholder="Contoh: Buat macro untuk memindahkan baris yang statusnya 'Done' di Kolom A ke Sheet baru bernama 'Archive'..."
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
@@ -253,7 +253,7 @@ export default function GenerateForm({
           <div className="flex items-center gap-4">
             <div className="relative">
               <select
-                className="pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer hover:bg-gray-100"
+                className="pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-primary transition-all appearance-none cursor-pointer hover:bg-gray-100 text-gray-900"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
                 disabled={isLoading}

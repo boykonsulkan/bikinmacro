@@ -8,14 +8,21 @@ export default async function GeneratePage() {
 
   if (!user) redirect('/auth/login')
 
-  const [{ data: profile }, { data: settings }] = await Promise.all([
-    supabase.from('users').select('credits_used, credits_limit, role').eq('id', user.id).single(),
-    supabase.from('admin_settings').select('max_chat_per_generation').eq('id', 1).single(),
-  ])
+  const { data: profile } = await supabase
+    .from('users')
+    .select('credits_used, credits_limit, role, plan')
+    .eq('id', user.id)
+    .single()
+
+  const { data: settings } = await supabase
+    .from('plan_settings')
+    .select('max_chat_per_generation, credits_limit')
+    .eq('plan', profile?.plan || 'free')
+    .single()
 
   const isAdmin = profile?.role === 'admin'
   const creditsUsed = profile?.credits_used || 0
-  const creditsLimit = profile?.credits_limit || 3
+  const creditsLimit = settings?.credits_limit ?? profile?.credits_limit ?? 3
   const maxChatPerGeneration = settings?.max_chat_per_generation ?? 10
 
   return (

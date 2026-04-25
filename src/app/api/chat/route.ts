@@ -48,22 +48,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Generation not found' }, { status: 404 })
     }
 
-    // Fetch admin settings
-    const { data: settings } = await supabase
-      .from('admin_settings')
-      .select('ai_provider, ai_model, system_context, max_chat_per_generation')
-      .eq('id', 1)
-      .single()
-
-    // Admins get unlimited chat
+    // Fetch user profile to get the plan
     const { data: profile } = await supabase.from('users').select('role, plan').eq('id', user.id).single()
     const isAdmin = profile?.role === 'admin'
 
-    // Calculate max chats based on plan
-    let maxChat = settings?.max_chat_per_generation ?? 10
-    if (profile?.plan === 'free') maxChat = 5
-    if (profile?.plan === 'starter') maxChat = 10
-    if (profile?.plan === 'pro') maxChat = 999 // Unlimited
+    // Fetch settings for the user's plan
+    const { data: settings } = await supabase
+      .from('plan_settings')
+      .select('ai_provider, ai_model, system_context, max_chat_per_generation')
+      .eq('plan', profile?.plan || 'free')
+      .single()
+
+    // Calculate max chats based on plan settings
+    const maxChat = settings?.max_chat_per_generation ?? 10
 
     // Count how many user messages exist for this generation
     const { count: chatCount } = await supabase

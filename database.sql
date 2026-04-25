@@ -25,7 +25,7 @@ CREATE TABLE public.payments (
   plan        TEXT NOT NULL,
   amount      INT NOT NULL,
   status      TEXT DEFAULT 'pending',
-  mayar_ref   TEXT,
+  midtrans_id TEXT,
   created_at  TIMESTAMP DEFAULT NOW()
 );
 
@@ -136,3 +136,28 @@ CREATE POLICY "Users can insert own chats" ON public.generation_chats
 
 CREATE POLICY "Admins can read all chats" ON public.generation_chats
   FOR SELECT USING ( public.is_admin() );
+
+-- Plan settings: configuration per user plan (free, starter, pro)
+CREATE TABLE public.plan_settings (
+  plan                    TEXT PRIMARY KEY,
+  ai_provider             TEXT DEFAULT 'openrouter',
+  ai_model                TEXT DEFAULT 'anthropic/claude-3-5-sonnet',
+  system_context          TEXT DEFAULT '',
+  credits_limit           INT DEFAULT 3,
+  max_chat_per_generation INT DEFAULT 10,
+  updated_at              TIMESTAMP DEFAULT NOW()
+);
+
+-- Seed plan settings
+INSERT INTO public.plan_settings (plan, credits_limit, max_chat_per_generation) VALUES 
+('free', 3, 5),
+('starter', 50, 10),
+('pro', 9999, 999);
+
+ALTER TABLE public.plan_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can read plan settings" ON public.plan_settings
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Admins can update plan settings" ON public.plan_settings
+  FOR UPDATE USING ( public.is_admin() );
