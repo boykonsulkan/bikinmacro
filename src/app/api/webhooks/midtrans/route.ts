@@ -21,49 +21,63 @@ export async function POST(req: Request) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       )
 
-      const userId = custom_field1
-      if (!userId) {
-        return NextResponse.json({ error: 'Missing custom_field1 (user_id)' }, { status: 400 })
+      // 1. Try to find the payment by order_id (direct API flow)
+      let { data: payment } = await supabase
+        .from('payments')
+        .select('user_id, plan')
+        .eq('midtrans_id', order_id)
+        .single()
+
+      let userId = payment?.user_id || custom_field1
+      let plan = payment?.plan
+
+      // 2. If no plan in DB (static link flow fallback), determine by amount
+      if (!plan) {
+        const amount = parseFloat(gross_amount)
+        if (amount === 25000) plan = 'addon'
+        else if (amount === 79000) plan = 'starter'
+        else if (amount === 149000) plan = 'pro'
+        else plan = 'unknown'
       }
 
-      const amount = parseFloat(gross_amount)
-      let plan = 'free'
-      if (amount === 25000) plan = 'addon'
-      else if (amount === 79000) plan = 'starter'
-      else if (amount === 149000) plan = 'pro'
-      else plan = 'unknown'
+      if (userId && plan && plan !== 'unknown') {
+        const { data: user } = await supabase.from('users').select('credits_limit').eq('id', userId).single()
+        
+        if (user) {
+          let newLimit = user.credits_limit
+          let newPlan = plan
+          let resetAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      const { data: user } = await supabase.from('users').select('credits_limit').eq('id', userId).single()
-      
-      if (user && plan !== 'unknown') {
-        let newLimit = user.credits_limit
-        let newPlan = plan
-        let resetAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          if (plan === 'addon') {
+            newLimit += 5
+            newPlan = undefined as any
+            resetAt = undefined as any
+          } else {
+            const { data: planSettings } = await supabase.from('plan_settings').select('credits_limit').eq('plan', plan).single()
+            if (planSettings) {
+              newLimit = planSettings.credits_limit
+            }
+          }
 
-        if (plan === 'addon') {
-          newLimit += 5
-          newPlan = undefined as any // Don't change plan for addon
-          resetAt = undefined as any // Don't reset expiry for addon
-        } else {
-          const { data: planSettings } = await supabase.from('plan_settings').select('credits_limit').eq('plan', plan).single()
-          if (planSettings) {
-            newLimit = planSettings.credits_limit
+          const updateData: any = { credits_limit: newLimit }
+          if (newPlan) updateData.plan = newPlan
+          if (resetAt) updateData.reset_at = resetAt
+
+          await supabase.from('users').update(updateData).eq('id', userId)
+
+          // Update existing payment or insert new one
+          if (payment) {
+            await supabase.from('payments').update({ status: 'success' }).eq('midtrans_id', order_id)
+          } else {
+            await supabase.from('payments').insert({
+              user_id: userId,
+              plan: plan,
+              amount: parseFloat(gross_amount),
+              status: 'success',
+              midtrans_id: order_id
+            })
           }
         }
-
-        const updateData: any = { credits_limit: newLimit }
-        if (newPlan) updateData.plan = newPlan
-        if (resetAt) updateData.reset_at = resetAt
-
-        await supabase.from('users').update(updateData).eq('id', userId)
-
-        await supabase.from('payments').insert({
-          user_id: userId,
-          plan: plan,
-          amount: amount,
-          status: 'success',
-          midtrans_id: order_id
-        })
       }
     }
 

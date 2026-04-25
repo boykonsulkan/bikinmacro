@@ -16,12 +16,18 @@ export const metadata: Metadata = {
 };
 
 import { ThemeProvider } from "@/components/ThemeProvider";
+import PaymentManager from "@/components/PaymentManager";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const midtransUrl = process.env.NEXT_PUBLIC_MIDTRANS_MODE === 'production'
+    ? 'https://app.midtrans.com/snap/snap.js'
+    : 'https://app.sandbox.midtrans.com/snap/snap.js';
+
   return (
     <html
       lang="id"
@@ -29,7 +35,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
+        <Script 
+          src={midtransUrl} 
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          strategy="beforeInteractive"
+        />
         <ThemeProvider>
+          <PaymentManager />
           <LayoutShell navbar={<Navbar />} footer={<Footer />}>
             {children}
           </LayoutShell>

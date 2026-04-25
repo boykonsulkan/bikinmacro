@@ -1,19 +1,11 @@
-import Link from 'next/link'
 import { Check, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
+import PricingButton from './PricingButton'
 
 export default async function PricingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  const getPaymentLink = (baseUrl: string) => {
-    if (!user) return '/auth/login'
-    return `${baseUrl}?custom_field1=${user.id}`
-  }
-
-  const addonLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_ADDON || "https://app.midtrans.com/payment-links/062a6963-e0fc-41da-ba5e-ff58ef6661a6")
-  const starterLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_STARTER || "https://app.midtrans.com/payment-links/36b42e0b-f53e-425f-8745-ee292e1ef7ec")
-  const proLink = getPaymentLink(process.env.NEXT_PUBLIC_MIDTRANS_LINK_PRO || "https://app.midtrans.com/payment-links/45e4f052-714a-400a-af43-adcc0fcc6435")
+  const isLoggedIn = !!user
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto p-6 sm:p-12">
@@ -49,13 +41,12 @@ export default async function PricingPage() {
             </li>
           </ul>
 
-          <Link 
-            href={addonLink}
-            target={user ? "_blank" : "_self"}
+          <PricingButton 
+            plan="addon"
+            label={isLoggedIn ? 'Beli Sekarang' : 'Login untuk Membeli'}
+            isLoggedIn={isLoggedIn}
             className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
-          >
-            {user ? 'Beli Sekarang' : 'Login untuk Membeli'}
-          </Link>
+          />
         </div>
 
         {/* Starter */}
@@ -85,13 +76,12 @@ export default async function PricingPage() {
             </li>
           </ul>
 
-          <Link 
-            href={starterLink}
-            target={user ? "_blank" : "_self"}
+          <PricingButton 
+            plan="starter"
+            label={isLoggedIn ? 'Pilih Starter' : 'Login untuk Membeli'}
+            isLoggedIn={isLoggedIn}
             className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
-          >
-            {user ? 'Pilih Starter' : 'Login untuk Membeli'}
-          </Link>
+          />
         </div>
 
         {/* Pro */}
@@ -125,13 +115,12 @@ export default async function PricingPage() {
             </li>
           </ul>
 
-          <Link 
-            href={proLink}
-            target={user ? "_blank" : "_self"}
+          <PricingButton 
+            plan="pro"
+            label={isLoggedIn ? 'Pilih Pro' : 'Login untuk Membeli'}
+            isLoggedIn={isLoggedIn}
             className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-medium transition-colors text-center shadow-lg shadow-primary/20"
-          >
-            {user ? 'Pilih Pro' : 'Login untuk Membeli'}
-          </Link>
+          />
         </div>
       </div>
 
