@@ -13,6 +13,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "BikinMacro | Excel VBA AI Generator",
   description: "Dari kalimat jadi macro. Tanpa coding.",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+  },
 };
 
 import { ThemeProvider } from "@/components/ThemeProvider";
