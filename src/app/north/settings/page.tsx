@@ -3,6 +3,7 @@ import { saveSettings } from './actions'
 import { Sliders, MessageSquare, CheckCircle, AlertCircle } from 'lucide-react'
 import AiConfigClient from './AiConfigClient'
 import SystemContextForm from './SystemContextForm'
+import PaymentSettingsForm from './PaymentSettingsForm'
 
 const PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter' },
@@ -44,6 +45,12 @@ export default async function NorthSettingsPage({
     .eq('plan', selectedPlan)
     .single()
 
+  const { data: adminSettings } = await supabase
+    .from('admin_settings')
+    .select('*')
+    .eq('id', 1)
+    .single()
+
   const currentProvider = settings?.ai_provider || 'openrouter'
 
   let apiKeyUsage = null
@@ -76,6 +83,15 @@ export default async function NorthSettingsPage({
           <p className="text-sm text-gray-500 mt-1">Configure AI provider, system context, and usage limits per plan.</p>
         </div>
       </div>
+
+      <PaymentSettingsForm 
+        initialProvider={adminSettings?.payment_provider || 'midtrans'}
+        lynkUrls={{
+          addon: adminSettings?.lynk_url_addon || '',
+          starter: adminSettings?.lynk_url_starter || '',
+          pro: adminSettings?.lynk_url_pro || '',
+        }}
+      />
 
       {/* Plan Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">

@@ -103,6 +103,10 @@ CREATE TABLE public.admin_settings (
   system_context          TEXT DEFAULT '',
   free_credits_limit      INT DEFAULT 3,
   max_chat_per_generation INT DEFAULT 10,
+  payment_provider        TEXT DEFAULT 'midtrans',
+  lynk_url_addon          TEXT DEFAULT '',
+  lynk_url_starter        TEXT DEFAULT '',
+  lynk_url_pro            TEXT DEFAULT '',
   updated_at              TIMESTAMP DEFAULT NOW()
 );
 

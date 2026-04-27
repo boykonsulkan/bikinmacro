@@ -30,3 +30,36 @@ export async function saveSettings(formData: FormData): Promise<void> {
   revalidatePath('/north/settings')
   redirect(error ? `/north/settings?plan=${plan}&saved=error` : `/north/settings?plan=${plan}&saved=ok`)
 }
+
+export async function savePaymentSettings(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Unauthorized' }
+
+  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin') return { error: 'Unauthorized' }
+
+  const payment_provider = formData.get('payment_provider') as string
+  const lynk_url_addon = formData.get('lynk_url_addon') as string
+  const lynk_url_starter = formData.get('lynk_url_starter') as string
+  const lynk_url_pro = formData.get('lynk_url_pro') as string
+
+  const { error } = await supabase
+    .from('admin_settings')
+    .update({
+      payment_provider,
+      lynk_url_addon: lynk_url_addon || '',
+      lynk_url_starter: lynk_url_starter || '',
+      lynk_url_pro: lynk_url_pro || '',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', 1)
+
+  if (error) {
+    console.error('savePaymentSettings error:', error)
+    return { error: error.message }
+  }
+
+  revalidatePath('/north/settings')
+  return { success: true }
+}
