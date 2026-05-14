@@ -1,6 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { Zap, User, Mail, CreditCard, ChevronRight } from 'lucide-react'
+import { Zap, User, Mail, CreditCard, ChevronRight, CalendarDays, RefreshCw } from 'lucide-react'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -16,13 +16,15 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('plan, credits_used, credits_limit, email')
+    .select('plan, credits_used, credits_limit, reset_at, email')
     .eq('id', user.id)
     .single()
 
-  const planName = profile?.plan === 'pro' ? 'Pro' : profile?.plan === 'starter' ? 'Starter' : 'Free'
+  const planName = profile?.plan === 'pro' ? 'Pro' : profile?.plan === 'starter' ? 'Starter' : profile?.plan === 'addon' ? 'Addon' : 'Free'
   const creditsUsed = profile?.credits_used || 0
   const creditsLimit = profile?.credits_limit || 3
+  const resetAt = profile?.reset_at ? new Date(profile.reset_at) : null
+  const isSubscription = profile?.plan === 'starter' || profile?.plan === 'pro'
 
   return (
     <div className="flex-1 w-full max-w-3xl mx-auto p-6 sm:p-12">
@@ -67,9 +69,40 @@ export default async function SettingsPage() {
               <div className="flex justify-between text-sm pt-2 border-t border-border/50">
                 <span className="text-muted">Refinement Chat</span>
                 <span className="text-foreground font-medium">
-                  {profile?.plan === 'free' ? '5 / macro' : profile?.plan === 'starter' ? '10 / macro' : 'Unlimited'}
+                  {profile?.plan === 'free' ? 'Tidak tersedia' : profile?.plan === 'starter' ? '10 / macro' : 'Unlimited'}
                 </span>
               </div>
+
+              {isSubscription && resetAt && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+                  <span className="text-muted flex items-center gap-1.5">
+                    <RefreshCw size={13} /> Kuota reset
+                  </span>
+                  <span className="text-foreground font-medium">
+                    {resetAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+
+              {isSubscription && resetAt && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+                  <span className="text-muted flex items-center gap-1.5">
+                    <CalendarDays size={13} /> Aktif hingga
+                  </span>
+                  <span className={`font-medium ${resetAt < new Date() ? 'text-red-500' : 'text-green-600'}`}>
+                    {resetAt < new Date()
+                      ? 'Expired — hubungi admin'
+                      : resetAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              )}
+
+              {profile?.plan === 'addon' && (
+                <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+                  <span className="text-muted">Masa aktif</span>
+                  <span className="text-foreground font-medium">Tidak ada expiry</span>
+                </div>
+              )}
             </div>
           </div>
         </section>
