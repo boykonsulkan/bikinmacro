@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { CreditCard, Search, ExternalLink, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { CreditCard, Search, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default async function NorthTransactionsPage() {
@@ -86,14 +86,9 @@ export default async function NorthTransactionsPage() {
                   <p className="text-[10px] text-gray-400">{format(new Date(p.created_at), 'HH:mm')}</p>
                 </td>
                 <td className="px-6 py-4">
-                   <div className="flex items-center gap-2 text-xs font-mono text-gray-400">
-                      {p.mayar_ref || 'N/A'}
-                      {p.mayar_ref && (
-                        <button className="text-gray-300 hover:text-primary transition-colors">
-                          <ExternalLink size={12} />
-                        </button>
-                      )}
-                   </div>
+                  <p className="text-xs font-mono text-gray-400 truncate max-w-[160px]" title={p.midtrans_id || ''}>
+                    {p.midtrans_id || 'N/A'}
+                  </p>
                 </td>
               </tr>
             ))}
