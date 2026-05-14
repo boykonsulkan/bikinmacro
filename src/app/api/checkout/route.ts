@@ -16,29 +16,24 @@ export async function POST(req: Request) {
     // Fetch payment configuration
     const { data: adminSettings } = await supabase
       .from('admin_settings')
-      .select('payment_provider, lynk_url_addon, lynk_url_starter, lynk_url_pro')
+      .select('payment_provider, lynk_url_addon, lynk_url_starter, lynk_url_pro, xendit_url_addon, xendit_url_starter, xendit_url_pro')
       .eq('id', 1)
       .single()
 
     const provider = adminSettings?.payment_provider || 'midtrans'
 
-    if (provider === 'lynk.id') {
-      let redirect_url = ''
-      if (plan === 'addon') redirect_url = adminSettings?.lynk_url_addon
-      else if (plan === 'starter') redirect_url = adminSettings?.lynk_url_starter
-      else if (plan === 'pro') redirect_url = adminSettings?.lynk_url_pro
-      
+    // Static payment link providers (Xendit & Lynk) — just return the URL
+    if (provider === 'xendit' || provider === 'lynk.id') {
+      const urls = provider === 'xendit'
+        ? { addon: (adminSettings as any)?.xendit_url_addon, starter: (adminSettings as any)?.xendit_url_starter, pro: (adminSettings as any)?.xendit_url_pro }
+        : { addon: adminSettings?.lynk_url_addon, starter: adminSettings?.lynk_url_starter, pro: adminSettings?.lynk_url_pro }
+
+      const redirect_url = urls[plan as 'addon' | 'starter' | 'pro'] || ''
       if (!redirect_url) {
-        return NextResponse.json({ error: 'Konfigurasi URL Lynk.id belum disetel oleh admin.' }, { status: 500 })
+        return NextResponse.json({ error: `URL pembayaran untuk paket ${plan} belum dikonfigurasi admin.` }, { status: 500 })
       }
-      
-      // Optionally we could record a 'pending' transaction here but since Lynk.id 
-      // uses static links, we don't have an order ID yet. We will rely on webhook 
-      // to insert the payment record.
-      return NextResponse.json({
-        redirect_url,
-        order_id: `LYNK-${plan}-${Date.now()}` // Mock order ID
-      })
+
+      return NextResponse.json({ redirect_url, provider })
     }
     
     // Determine price for Midtrans

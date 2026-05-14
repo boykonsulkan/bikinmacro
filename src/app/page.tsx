@@ -1,10 +1,17 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { FileCode2, ArrowRight, LayoutTemplate } from 'lucide-react'
+import { FileCode2, ArrowRight, LayoutTemplate, ShieldCheck } from 'lucide-react'
 
 export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: adminSettings } = await supabase
+    .from('admin_settings')
+    .select('payment_provider')
+    .eq('id', 1)
+    .single()
+  const isXendit = adminSettings?.payment_provider === 'xendit'
 
   // For Guest
   let totalUsers = 0
@@ -133,6 +140,14 @@ export default async function Home() {
               Coba Gratis Sekarang <ArrowRight size={20} />
             </Link>
           </div>
+
+          {isXendit && (
+            <div className="mt-10 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
+              <ShieldCheck size={14} className="shrink-0" />
+              Pembayaran diproses oleh <strong className="mx-1">Xendit</strong> atas nama
+              <strong className="mx-1">konsulkan.com</strong> — parent brand dari BikinMacro
+            </div>
+          )}
 
           <div className="w-full mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             {[

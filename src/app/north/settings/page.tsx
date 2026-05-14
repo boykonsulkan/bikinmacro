@@ -47,7 +47,7 @@ export default async function NorthSettingsPage({
 
   const { data: adminSettings } = await supabase
     .from('admin_settings')
-    .select('*')
+    .select('payment_provider, lynk_url_addon, lynk_url_starter, lynk_url_pro, xendit_url_addon, xendit_url_starter, xendit_url_pro')
     .eq('id', 1)
     .single()
 
@@ -84,12 +84,17 @@ export default async function NorthSettingsPage({
         </div>
       </div>
 
-      <PaymentSettingsForm 
+      <PaymentSettingsForm
         initialProvider={adminSettings?.payment_provider || 'midtrans'}
         lynkUrls={{
           addon: adminSettings?.lynk_url_addon || '',
           starter: adminSettings?.lynk_url_starter || '',
           pro: adminSettings?.lynk_url_pro || '',
+        }}
+        xenditUrls={{
+          addon: (adminSettings as any)?.xendit_url_addon || '',
+          starter: (adminSettings as any)?.xendit_url_starter || '',
+          pro: (adminSettings as any)?.xendit_url_pro || '',
         }}
       />
 

@@ -30,14 +30,20 @@ export default function PricingButton({ plan, label, isLoggedIn, className }: Pr
       })
 
       const data = await res.json()
-      
+
       if (data.error) {
         alert(data.error)
         return
       }
 
-      // Dispatch custom event to PaymentManager
-      window.dispatchEvent(new CustomEvent('start-payment', { 
+      // Static link providers (Xendit, Lynk) — redirect directly to payment page
+      if (data.redirect_url && !data.token) {
+        window.location.href = data.redirect_url
+        return
+      }
+
+      // Midtrans Snap popup
+      window.dispatchEvent(new CustomEvent('start-payment', {
         detail: {
           token: data.token,
           order_id: data.order_id,

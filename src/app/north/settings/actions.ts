@@ -40,17 +40,17 @@ export async function savePaymentSettings(formData: FormData) {
   if (profile?.role !== 'admin') return { error: 'Unauthorized' }
 
   const payment_provider = formData.get('payment_provider') as string
-  const lynk_url_addon = formData.get('lynk_url_addon') as string
-  const lynk_url_starter = formData.get('lynk_url_starter') as string
-  const lynk_url_pro = formData.get('lynk_url_pro') as string
 
   const { error } = await supabase
     .from('admin_settings')
     .update({
       payment_provider,
-      lynk_url_addon: lynk_url_addon || '',
-      lynk_url_starter: lynk_url_starter || '',
-      lynk_url_pro: lynk_url_pro || '',
+      lynk_url_addon: (formData.get('lynk_url_addon') as string) || '',
+      lynk_url_starter: (formData.get('lynk_url_starter') as string) || '',
+      lynk_url_pro: (formData.get('lynk_url_pro') as string) || '',
+      xendit_url_addon: (formData.get('xendit_url_addon') as string) || '',
+      xendit_url_starter: (formData.get('xendit_url_starter') as string) || '',
+      xendit_url_pro: (formData.get('xendit_url_pro') as string) || '',
       updated_at: new Date().toISOString()
     })
     .eq('id', 1)
