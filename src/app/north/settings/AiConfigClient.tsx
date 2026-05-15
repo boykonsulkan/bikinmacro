@@ -7,6 +7,7 @@ const PROVIDERS = [
   { value: 'openrouter', label: 'OpenRouter' },
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Google Gemini' },
 ]
 
 export default function AiConfigClient({
@@ -82,6 +83,8 @@ export default function AiConfigClient({
     return matchesProvider && matchesQuery
   })
 
+  const isDirectProvider = provider === 'gemini'
+
   const handleSelect = (model: any) => {
     setModelValue(model.id)
     setQuery(model.id)
@@ -133,72 +136,88 @@ export default function AiConfigClient({
           </select>
         </div>
 
-        {/* Model combobox */}
+        {/* Model input */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Model Name
           </label>
 
-          {/* Hidden input carries the actual value for form submit */}
-          <input type="hidden" name="ai_model" value={modelValue} />
-
-          <div ref={comboRef} className="relative">
-            <div className="relative flex items-center">
-              <Search size={15} className="absolute left-3 text-gray-400 pointer-events-none" />
+          {isDirectProvider ? (
+            <>
+              <input type="hidden" name="ai_model" value={modelValue} />
               <input
                 type="text"
-                value={query}
-                onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
-                onFocus={() => setIsOpen(true)}
-                placeholder={isLoading ? 'Loading models...' : 'Ketik untuk cari model...'}
-                disabled={isLoading}
-                className="w-full rounded-lg pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm disabled:opacity-50"
+                value={modelValue}
+                onChange={(e) => setModelValue(e.target.value)}
+                placeholder="gemini-2.0-flash-exp"
+                className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm font-mono"
               />
-              {query ? (
-                <button type="button" onClick={handleClear} className="absolute right-3 text-gray-400 hover:text-gray-600">
-                  <X size={14} />
-                </button>
-              ) : (
-                <ChevronDown size={14} className="absolute right-3 text-gray-400 pointer-events-none" />
-              )}
-            </div>
+              <p className="text-xs text-gray-400 mt-1.5">e.g. gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.5-pro</p>
+            </>
+          ) : (
+            <>
+              {/* Hidden input carries the actual value for form submit */}
+              <input type="hidden" name="ai_model" value={modelValue} />
 
-            {isOpen && filteredModels.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                <div className="max-h-64 overflow-y-auto">
-                  {filteredModels.slice(0, 100).map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => handleSelect(m)}
-                      className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center justify-between gap-2 ${modelValue === m.id ? 'bg-violet-50' : ''}`}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
-                        <p className="text-[11px] text-gray-400 font-mono truncate">{m.id}</p>
-                      </div>
-                      {m.id.includes(':free') && (
-                        <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
-                          Free
-                        </span>
-                      )}
+              <div ref={comboRef} className="relative">
+                <div className="relative flex items-center">
+                  <Search size={15} className="absolute left-3 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
+                    onFocus={() => setIsOpen(true)}
+                    placeholder={isLoading ? 'Loading models...' : 'Ketik untuk cari model...'}
+                    disabled={isLoading}
+                    className="w-full rounded-lg pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm disabled:opacity-50"
+                  />
+                  {query ? (
+                    <button type="button" onClick={handleClear} className="absolute right-3 text-gray-400 hover:text-gray-600">
+                      <X size={14} />
                     </button>
-                  ))}
+                  ) : (
+                    <ChevronDown size={14} className="absolute right-3 text-gray-400 pointer-events-none" />
+                  )}
                 </div>
-                {filteredModels.length > 100 && (
-                  <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50">
-                    {filteredModels.length - 100} model lainnya — ketik lebih spesifik untuk mempersempit.
+
+                {isOpen && filteredModels.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      {filteredModels.slice(0, 100).map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => handleSelect(m)}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center justify-between gap-2 ${modelValue === m.id ? 'bg-violet-50' : ''}`}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{m.name}</p>
+                            <p className="text-[11px] text-gray-400 font-mono truncate">{m.id}</p>
+                          </div>
+                          {m.id.includes(':free') && (
+                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                              Free
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {filteredModels.length > 100 && (
+                      <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50">
+                        {filteredModels.length - 100} model lainnya — ketik lebih spesifik untuk mempersempit.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isOpen && !isLoading && filteredModels.length === 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400">
+                    Tidak ada model yang cocok.
                   </div>
                 )}
               </div>
-            )}
-
-            {isOpen && !isLoading && filteredModels.length === 0 && (
-              <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl px-4 py-3 text-sm text-gray-400">
-                Tidak ada model yang cocok.
-              </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
