@@ -13,11 +13,11 @@ const PROVIDERS = [
 
 const MODEL_HINTS: Record<string, string[]> = {
   openrouter: [
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'mistralai/mistral-7b-instruct:free',
     'anthropic/claude-3-5-sonnet',
-    'anthropic/claude-3-haiku',
     'openai/gpt-4o-mini',
-    'google/gemini-flash-1.5',
-    'meta-llama/llama-3.1-8b-instruct:free',
   ],
   anthropic: [
     'claude-3-5-sonnet-20241022',
