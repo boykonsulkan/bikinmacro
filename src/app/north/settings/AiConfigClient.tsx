@@ -144,15 +144,11 @@ export default function AiConfigClient({
 
           {isDirectProvider ? (
             <>
-              <input type="hidden" name="ai_model" value={modelValue} />
-              <input
-                type="text"
-                value={modelValue}
-                onChange={(e) => setModelValue(e.target.value)}
-                placeholder="gemini-2.0-flash-exp"
-                className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all text-gray-900 text-sm font-mono"
-              />
-              <p className="text-xs text-gray-400 mt-1.5">e.g. gemini-2.0-flash-exp, gemini-1.5-pro, gemini-2.5-pro</p>
+              <input type="hidden" name="ai_model" value="gemini-2.0-flash" />
+              <div className="w-full rounded-lg px-4 py-2.5 bg-gray-50 border border-gray-200 text-gray-500 text-sm font-mono">
+                gemini-2.0-flash
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5">Menggunakan <code>GOOGLE_GENERATIVE_AI_API_KEY</code> dari environment.</p>
             </>
           ) : (
             <>

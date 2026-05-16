@@ -25,7 +25,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
   if (formData.has('credits_limit')) updateData.credits_limit = parseInt(formData.get('credits_limit') as string) || 0
   if (formData.has('max_chat_per_generation')) updateData.max_chat_per_generation = parseInt(formData.get('max_chat_per_generation') as string) || 0
 
-  const { error } = await supabase.from('plan_settings').upsert(updateData, { onConflict: 'plan' })
+  const { error } = await supabase.from('plan_settings').update(updateData).eq('plan', plan)
 
   if (error) console.error('saveSettings error:', error)
 

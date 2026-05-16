@@ -21,7 +21,7 @@ function getAiModel(provider: string, model: string) {
   }
   if (provider === 'gemini') {
     const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })
-    return google(model || 'gemini-2.0-flash-exp')
+    return google(model || 'gemini-2.0-flash')
   }
   const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   return anthropic((model || 'claude-3-5-sonnet-20240620') as Parameters<ReturnType<typeof createAnthropic>>[0])
