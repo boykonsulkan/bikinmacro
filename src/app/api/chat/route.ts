@@ -5,7 +5,10 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
-const OPENROUTER_FALLBACK_MODEL = 'google/gemini-2.0-flash-exp:free'
+const OPENROUTER_FALLBACK_MODELS = [
+  'mistralai/mistral-7b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+]
 
 function getAiModel(provider: string, model: string) {
   if (provider === 'openai') {
@@ -17,7 +20,7 @@ function getAiModel(provider: string, model: string) {
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: 'https://openrouter.ai/api/v1'
     })
-    return openrouter(model || OPENROUTER_FALLBACK_MODEL)
+    return openrouter(model || OPENROUTER_FALLBACK_MODELS[0])
   }
   if (provider === 'gemini') {
     const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })
@@ -120,14 +123,26 @@ PENTING:
       chatResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, messages, temperature: 0.2 })
     } catch (err: any) {
       const errStr = JSON.stringify({ m: err?.message, b: err?.responseBody, c: err?.cause?.message })
-      const isUnavailable = aiProvider === 'openrouter' && (
+      const shouldFallback = aiProvider === 'openrouter' && (
         errStr.includes('No endpoints found') ||
         errStr.includes('unavailable') ||
-        errStr.includes('404')
+        errStr.includes('404') ||
+        errStr.includes('Provider returned error') ||
+        errStr.includes('rate limit') ||
+        errStr.includes('overloaded')
       )
-      if (isUnavailable) {
-        console.warn(`Model ${aiModel} unavailable, falling back to ${OPENROUTER_FALLBACK_MODEL}`)
-        chatResult = await generateText({ model: getAiModel(aiProvider, OPENROUTER_FALLBACK_MODEL), system: systemPrompt, messages, temperature: 0.2 })
+      if (shouldFallback) {
+        let lastErr = err
+        for (const fallback of OPENROUTER_FALLBACK_MODELS) {
+          try {
+            console.warn(`Model ${aiModel} failed, trying fallback: ${fallback}`)
+            chatResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, messages, temperature: 0.2 })
+            break
+          } catch (e: any) {
+            lastErr = e
+          }
+        }
+        if (!chatResult) throw lastErr
       } else throw err
     }
     const { text } = chatResult
