@@ -6,7 +6,6 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
 const OPENROUTER_FALLBACK_MODELS = [
-  'mistralai/mistral-7b-instruct:free',
   'google/gemini-2.0-flash-exp:free',
 ]
 
