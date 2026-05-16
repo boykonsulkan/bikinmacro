@@ -3,6 +3,9 @@ import { createClient } from '@/utils/supabase/server'
 import { generateText } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+
+const OPENROUTER_FALLBACK_MODEL = 'google/gemini-2.0-flash-exp:free'
 
 function getAiModel(provider: string, model: string) {
   if (provider === 'openai') {
@@ -14,11 +17,16 @@ function getAiModel(provider: string, model: string) {
       apiKey: process.env.OPENROUTER_API_KEY,
       baseURL: 'https://openrouter.ai/api/v1'
     })
-    return openrouter(model || 'anthropic/claude-3-5-sonnet')
+    return openrouter(model || OPENROUTER_FALLBACK_MODEL)
+  }
+  if (provider === 'gemini') {
+    const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })
+    return google(model || 'gemini-2.0-flash')
   }
   const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   return anthropic((model || 'claude-3-5-sonnet-20240620') as Parameters<ReturnType<typeof createAnthropic>>[0])
 }
+
 
 function getFallbackProvider(): string {
   return process.env.AI_PROVIDER ||
@@ -83,12 +91,22 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
 
     const userPrompt = `Buatkan macro Excel VBA untuk: ${prompt}. Pastikan macro aman dijalankan, punya konfirmasi sebelum aksi destruktif, dan berjalan di Excel 2016 ke atas.`
 
-    const { text } = await generateText({
-      model: getAiModel(aiProvider, aiModel),
-      system: systemPrompt,
-      prompt: userPrompt,
-      temperature: 0.2,
-    })
+    let genResult
+    try {
+      genResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, prompt: userPrompt, temperature: 0.2 })
+    } catch (err: any) {
+      const errStr = JSON.stringify({ m: err?.message, b: err?.responseBody, c: err?.cause?.message })
+      const isUnavailable = aiProvider === 'openrouter' && (
+        errStr.includes('No endpoints found') ||
+        errStr.includes('unavailable') ||
+        errStr.includes('404')
+      )
+      if (isUnavailable) {
+        console.warn(`Model ${aiModel} unavailable, falling back to ${OPENROUTER_FALLBACK_MODEL}`)
+        genResult = await generateText({ model: getAiModel(aiProvider, OPENROUTER_FALLBACK_MODEL), system: systemPrompt, prompt: userPrompt, temperature: 0.2 })
+      } else throw err
+    }
+    const { text } = genResult
 
     let vbaCode = text
     if (vbaCode.startsWith('```vba')) {

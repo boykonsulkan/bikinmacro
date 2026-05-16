@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRight } from 'lucide-react'
 import { codeToHtml } from 'shiki'
 import MacroChat from './MacroChat'
 
@@ -16,86 +16,38 @@ const CATEGORIES = [
   'Lainnya'
 ]
 
-type QuestionType = 'text' | 'single' | 'multi'
-
-interface Question {
-  id: string
-  text: string
-  type: QuestionType
-  options?: string[]
-  placeholder?: string
-}
-
-const QUESTIONS: Question[] = [
+const QUESTIONS = [
   {
-    id: 'structure',
-    text: 'Ceritakan struktur file Excel kamu',
+    id: 'sheet',
+    label: 'Sheet mana yang akan diproses?',
+    placeholder: 'Contoh: Sheet1, Data, Master',
     type: 'text',
-    placeholder: 'Contoh: Ada 3 sheet, Sheet1 punya kolom Tanggal, Produk, Jumlah. Data mulai dari baris 2...',
   },
   {
-    id: 'scope',
-    text: 'Macro ini akan bekerja di mana?',
-    type: 'single',
-    options: ['Sheet aktif saja', 'Beberapa sheet tertentu', 'Semua sheet', 'Lintas file Excel'],
+    id: 'columns',
+    label: 'Kolom atau data apa yang terlibat?',
+    placeholder: 'Contoh: Kolom A (Nama), B (Status), C (Tanggal)',
+    type: 'text',
   },
   {
-    id: 'actions',
-    text: 'Aksi apa saja yang boleh dilakukan macro ini?',
-    type: 'multi',
-    options: ['Ubah atau hapus data', 'Buat sheet baru', 'Kirim email', 'Simpan atau export file', 'Format tampilan', 'Buat laporan atau pivot'],
+    id: 'rowcount',
+    label: 'Perkiraan jumlah baris data?',
+    type: 'radio',
+    options: ['< 100 baris', '100 – 1.000 baris', '> 1.000 baris', 'Tidak tahu'],
   },
   {
-    id: 'safety',
-    text: 'Bagaimana macro harus bertindak sebelum mengubah data?',
-    type: 'single',
-    options: ['Langsung jalankan', 'Minta konfirmasi dulu', 'Backup otomatis dulu', 'Tampilkan preview dulu'],
+    id: 'destructive',
+    label: 'Apakah macro ini akan mengubah atau menghapus data yang ada?',
+    type: 'radio',
+    options: ['Ya, akan mengubah data', 'Tidak, hanya membaca', 'Hanya output ke sheet baru'],
   },
   {
-    id: 'priority',
-    text: 'Yang paling penting dari macro ini?',
-    type: 'single',
-    options: ['Kode sesimpel mungkin', 'Bisa dijalankan berulang kali', 'Mudah dimodifikasi nanti', 'Komentar penjelasan lengkap'],
+    id: 'output',
+    label: 'Output yang diharapkan?',
+    placeholder: 'Contoh: File Excel baru, laporan di sheet terpisah, pesan pop-up',
+    type: 'text',
   },
 ]
-
-function buildEnrichedPrompt(basePrompt: string, answers: Record<string, string | string[]>): string {
-  const details: string[] = []
-
-  const structure = answers['structure']
-  const scope = answers['scope']
-  const actions = answers['actions']
-  const safety = answers['safety']
-  const priority = answers['priority']
-
-  if (typeof structure === 'string' && structure.trim()) {
-    details.push(`Struktur file Excel: ${structure.trim()}`)
-  }
-  if (typeof scope === 'string' && scope) {
-    details.push(`Scope kerja macro: ${scope}`)
-  }
-  if (Array.isArray(actions) && actions.length > 0) {
-    details.push(`Aksi yang diizinkan: ${actions.join(', ')}`)
-  }
-  if (typeof safety === 'string' && safety) {
-    details.push(`Keamanan data: ${safety}`)
-  }
-  if (typeof priority === 'string' && priority) {
-    details.push(`Prioritas utama: ${priority}`)
-  }
-
-  if (details.length === 0) return basePrompt
-  return `${basePrompt}\n\nKonteks tambahan:\n${details.map(d => `- ${d}`).join('\n')}`
-}
-
-function countAnswered(answers: Record<string, string | string[]>): number {
-  return QUESTIONS.filter(q => {
-    const a = answers[q.id]
-    if (!a) return false
-    if (Array.isArray(a)) return a.length > 0
-    return a.trim().length > 0
-  }).length
-}
 
 export default function GenerateForm({
   hasCredits,
@@ -119,27 +71,36 @@ export default function GenerateForm({
   const [generationId, setGenerationId] = useState<string | null>(null)
   const [chatMax, setChatMax] = useState(maxChatPerGeneration)
   const [viewMode, setViewMode] = useState<'initial' | 'questions' | 'chat'>('initial')
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
 
-  const handleGenerate = async (enrichedPrompt: string) => {
-    if (!enrichedPrompt.trim()) return
-
+  const handleGoToQuestions = () => {
+    if (!prompt.trim()) return
     if (!hasCredits && !isAdmin) {
       router.push('/pricing')
       return
     }
+    setError('')
+    setViewMode('questions')
+  }
 
+  const handleGenerate = async () => {
     setIsLoading(true)
     setError('')
-    setOutputHtml('')
-    setOutputRaw('')
-    setGenerationId(null)
+
+    const extras = QUESTIONS
+      .filter(q => answers[q.id]?.trim())
+      .map(q => `${q.label} → ${answers[q.id]}`)
+      .join('\n')
+
+    const fullPrompt = extras
+      ? `${prompt.trim()}\n\nDetail tambahan:\n${extras}`
+      : prompt.trim()
 
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: enrichedPrompt, category })
+        body: JSON.stringify({ prompt: fullPrompt, category })
       })
 
       if (!res.ok) {
@@ -163,7 +124,6 @@ export default function GenerateForm({
       router.refresh()
     } catch (err: any) {
       setError(err.message)
-      setViewMode('questions')
     } finally {
       setIsLoading(false)
     }
@@ -197,32 +157,86 @@ export default function GenerateForm({
     setGenerationId(null)
     setAnswers({})
     setViewMode('initial')
-    setError('')
   }
 
-  const setSingleAnswer = (questionId: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }))
+  // ── Questions step ──────────────────────────────────────────────
+  if (viewMode === 'questions') {
+    return (
+      <div className="space-y-8 max-w-2xl mx-auto py-10">
+        <div className="text-center mb-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Langkah 2 dari 2</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">Detail macro kamu</h1>
+          <p className="text-muted text-sm">Jawab beberapa pertanyaan singkat agar hasil lebih akurat. Bisa dilewati.</p>
+        </div>
+
+        {/* Prompt recap */}
+        <div className="bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+          <FileCode2 size={16} className="text-primary shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700 leading-relaxed">{prompt}</p>
+        </div>
+
+        <div className="space-y-5">
+          {QUESTIONS.map((q) => (
+            <div key={q.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+              <p className="text-sm font-semibold text-gray-800 mb-3">{q.label}</p>
+              {q.type === 'text' ? (
+                <input
+                  type="text"
+                  value={answers[q.id] || ''}
+                  onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                  placeholder={q.placeholder}
+                  className="w-full rounded-xl px-4 py-2.5 bg-gray-50 border border-gray-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-sm text-gray-900 placeholder:text-gray-300"
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {q.options!.map(opt => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAnswers(prev => ({ ...prev, [q.id]: prev[q.id] === opt ? '' : opt }))}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                        answers[q.id] === opt
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-center gap-3">
+            <Plus className="rotate-45 shrink-0" size={16} />
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => setViewMode('initial')}
+            className="px-6 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Kembali
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={isLoading}
+            className="flex-1 bg-black hover:bg-gray-800 disabled:bg-gray-300 text-white px-8 py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-lg shadow-black/10 active:scale-95"
+          >
+            {isLoading ? <RefreshCw className="animate-spin" size={20} /> : <Zap size={20} className="fill-current" />}
+            {isLoading ? 'Menulis Kode...' : 'Generate Macro'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
-  const toggleMultiAnswer = (questionId: string, value: string) => {
-    setAnswers(prev => {
-      const current = (prev[questionId] as string[]) || []
-      const next = current.includes(value)
-        ? current.filter(v => v !== value)
-        : [...current, value]
-      return { ...prev, [questionId]: next }
-    })
-  }
-
-  const skipQuestion = (questionId: string) => {
-    setAnswers(prev => {
-      const next = { ...prev }
-      delete next[questionId]
-      return next
-    })
-  }
-
-  // --- Chat view ---
+  // ── Chat / result step ──────────────────────────────────────────
   if (viewMode === 'chat' && generationId) {
     return (
       <div className="fixed inset-0 z-50 bg-background flex flex-col pt-16">
@@ -327,137 +341,7 @@ export default function GenerateForm({
     )
   }
 
-  // --- Questions view ---
-  if (viewMode === 'questions') {
-    const answeredCount = countAnswered(answers)
-
-    return (
-      <div className="max-w-2xl mx-auto py-10">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-1">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Beberapa pertanyaan</h1>
-            <span className="text-sm font-semibold text-gray-400 tabular-nums">
-              {answeredCount}/{QUESTIONS.length}
-            </span>
-          </div>
-          <p className="text-base text-muted">
-            Biar macro-nya lebih tepat. Jawab yang kamu tahu — boleh lewati jika tidak relevan.
-          </p>
-        </div>
-
-        {/* Questions */}
-        <div className="space-y-6">
-          {QUESTIONS.map((q, idx) => {
-            const answer = answers[q.id]
-            const hasAnswer = Array.isArray(answer) ? answer.length > 0 : !!(answer as string)?.trim()
-
-            return (
-              <div key={q.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <p className="text-sm font-semibold text-gray-900 leading-snug">
-                    <span className="text-gray-400 mr-2">{idx + 1}.</span>
-                    {q.text}
-                    {q.type === 'multi' && (
-                      <span className="ml-2 text-xs font-normal text-gray-400">(boleh pilih beberapa)</span>
-                    )}
-                  </p>
-                  {hasAnswer && (
-                    <button
-                      onClick={() => skipQuestion(q.id)}
-                      className="shrink-0 text-xs text-gray-400 hover:text-gray-600 transition-colors font-medium"
-                    >
-                      Lewati
-                    </button>
-                  )}
-                  {!hasAnswer && (
-                    <span className="shrink-0 text-xs text-gray-300 font-medium">Lewati</span>
-                  )}
-                </div>
-
-                {q.type === 'text' && (
-                  <textarea
-                    className="w-full h-24 rounded-xl px-4 py-3 bg-gray-50 border border-gray-200 focus:outline-none focus:bg-white focus:ring-2 focus:ring-black/5 focus:border-gray-400 transition-all text-sm resize-none placeholder:text-gray-300 text-gray-900"
-                    placeholder={q.placeholder}
-                    value={(answer as string) || ''}
-                    onChange={e => setSingleAnswer(q.id, e.target.value)}
-                  />
-                )}
-
-                {(q.type === 'single' || q.type === 'multi') && q.options && (
-                  <div className="flex flex-wrap gap-2">
-                    {q.options.map(opt => {
-                      const isSelected = q.type === 'multi'
-                        ? (answer as string[] || []).includes(opt)
-                        : answer === opt
-
-                      return (
-                        <button
-                          key={opt}
-                          onClick={() =>
-                            q.type === 'multi'
-                              ? toggleMultiAnswer(q.id, opt)
-                              : setSingleAnswer(q.id, isSelected ? '' : opt)
-                          }
-                          className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                            isSelected
-                              ? 'bg-gray-900 text-white border-gray-900'
-                              : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-400 hover:text-gray-900'
-                          }`}
-                        >
-                          {isSelected && <Check size={12} className="inline mr-1.5 -mt-0.5" />}
-                          {opt}
-                        </button>
-                      )
-                    })}
-                    <button
-                      className="px-4 py-2 rounded-full text-sm font-medium border border-dashed border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-all"
-                    >
-                      + Lainnya
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        {error && (
-          <div className="mt-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-center gap-3">
-            <Plus className="rotate-45 shrink-0" size={16} />
-            {error}
-          </div>
-        )}
-
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-8">
-          <button
-            onClick={() => { setViewMode('initial'); setError('') }}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-all"
-          >
-            <ArrowLeft size={16} />
-            Kembali
-          </button>
-
-          <button
-            onClick={() => {
-              const enriched = buildEnrichedPrompt(prompt, answers)
-              handleGenerate(enriched)
-            }}
-            disabled={isLoading || (!hasCredits && !isAdmin)}
-            className="flex items-center gap-3 bg-black hover:bg-gray-800 disabled:bg-gray-300 text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-black/10 active:scale-95"
-          >
-            {isLoading
-              ? <><RefreshCw className="animate-spin" size={18} /> Menulis Kode...</>
-              : <><Zap size={18} className="fill-current" /> Generate Macro</>
-            }
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // --- Initial view ---
+  // ── Initial step ────────────────────────────────────────────────
   return (
     <div className="space-y-8 max-w-2xl mx-auto py-10">
       <div className="text-center mb-8">
@@ -497,22 +381,18 @@ export default function GenerateForm({
           </div>
 
           <button
-            onClick={() => setViewMode('questions')}
+            onClick={handleGoToQuestions}
             disabled={!prompt.trim() || (!hasCredits && !isAdmin)}
             className="bg-black hover:bg-gray-800 disabled:bg-gray-300 text-white px-8 py-3.5 rounded-2xl font-bold transition-all flex items-center gap-3 shadow-lg shadow-black/10 active:scale-95"
           >
-            Lanjutkan
-            <ArrowRight size={18} />
+            <span>Lanjut</span>
+            <ChevronRight size={18} />
           </button>
         </div>
 
         {!hasCredits && !isAdmin && (
           <div className="mt-6 p-4 bg-orange-50 border border-orange-100 text-orange-700 rounded-2xl text-sm text-center">
-            Kuota Anda habis.{' '}
-            <button onClick={() => router.push('/pricing')} className="font-bold underline">
-              Upgrade Sekarang
-            </button>{' '}
-            untuk lanjut otomatisasi.
+            Kuota Anda habis. <button onClick={() => router.push('/pricing')} className="font-bold underline">Upgrade Sekarang</button> untuk lanjut otomatisasi.
           </div>
         )}
       </div>
