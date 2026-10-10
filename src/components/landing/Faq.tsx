@@ -17,6 +17,10 @@ const ITEMS = [
     a: 'Tempel pesan error-nya, atau ceritain hasil yang meleset. Kami benerin dan kirim versi barunya, gratis.',
   },
   {
+    q: 'Habis bayar, gimana?',
+    a: 'Isi form pesanan dengan nomor order Midtrans, cerita kerjaan, dan contoh file kamu. Kami cek pembayarannya, bikin file Excel-nya, lalu kamu bisa pantau dan minta revisi lewat chat di halaman pesanan.',
+  },
+  {
     q: 'Perlu install sesuatu?',
     a: 'Nggak perlu install apa apa. Cukup Excel desktop yang sudah ada di laptop kamu.',
   },

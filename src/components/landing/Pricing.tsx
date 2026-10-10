@@ -122,6 +122,14 @@ export default function Pricing({ xenditNotice = false }: { xenditNotice?: boole
           })}
         </div>
 
+        <p className="mt-8 text-sm font-medium text-slate-300">
+          Sudah bayar?{' '}
+          <Link href="/pesan" className="font-bold text-white underline underline-offset-4">
+            Isi form pesanan
+          </Link>{' '}
+          supaya kerjaan kamu mulai dibikin.
+        </p>
+
         {xenditNotice && (
           <p className="mt-10 flex items-start gap-2 text-sm font-medium text-slate-300">
             <ShieldCheck size={16} strokeWidth={1.5} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
