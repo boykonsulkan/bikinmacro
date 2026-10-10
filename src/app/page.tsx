@@ -1,21 +1,11 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
-import { FileCode2, ArrowRight, LayoutTemplate, ShieldCheck } from 'lucide-react'
+import { FileCode2, ArrowRight, LayoutTemplate } from 'lucide-react'
+import LandingPage from '@/components/landing/LandingPage'
 
 export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: adminSettings } = await supabase
-    .from('admin_settings')
-    .select('payment_provider')
-    .eq('id', 1)
-    .single()
-  const isXendit = adminSettings?.payment_provider === 'xendit'
-
-  // For Guest
-  let totalUsers = 0
-  let totalMacros = 0
 
   // For Logged In
   let userPlan = 'free'
@@ -34,19 +24,23 @@ export default async function Home() {
       creditsUsed = profile.credits_used
       creditsLimit = profile.credits_limit
     }
-  } else {
-    // In a real app, you might want to cache this or use a cron to update a stats table
-    const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true })
-    const { count: macrosCount } = await supabase.from('generations').select('*', { count: 'exact', head: true })
-    totalUsers = usersCount || 0
-    totalMacros = macrosCount || 0
+  }
+
+  if (!user) {
+    // Catatan pembayaran Xendit tampil di bagian Harga kalau provider aktifnya Xendit.
+    const { data: adminSettings } = await supabase
+      .from('admin_settings')
+      .select('payment_provider')
+      .eq('id', 1)
+      .single()
+    return <LandingPage xenditNotice={adminSettings?.payment_provider === 'xendit'} />
   }
 
   const isLowCredits = user && creditsUsed >= creditsLimit * 0.8
 
   return (
     <div className="flex flex-col items-center flex-1 w-full p-6 sm:p-12">
-      {user ? (
+      {user && (
         <div className="w-full max-w-4xl flex flex-col gap-8 mt-10">
           <div className="flex justify-between items-center bg-card border border-border p-6 rounded-2xl shadow-sm">
             <div>
@@ -116,56 +110,6 @@ export default async function Home() {
                 </Link>
               </div>
             )}
-          </div>
-        </div>
-      ) : (
-        <div className="w-full max-w-5xl flex flex-col items-center text-center mt-16 sm:mt-24">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            LIVE: {totalUsers} User | {totalMacros} Macro Terbuat
-          </div>
-          
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-foreground tracking-tight max-w-4xl leading-tight">
-            Dari kalimat biasa jadi <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">Excel Macro</span>. Tanpa coding.
-          </h1>
-          <p className="text-lg sm:text-xl text-muted max-w-2xl mt-6">
-            BikinMacro menggunakan teknologi AI untuk mengubah instruksi bahasa Indonesia kamu menjadi kode VBA yang siap dipakai. Hemat waktu berjam-jam untuk automasi pekerjaanmu.
-          </p>
-
-          <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Link href="/auth/register" className="bg-primary hover:bg-primary-hover text-white px-8 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
-              Coba Gratis Sekarang <ArrowRight size={20} />
-            </Link>
-          </div>
-
-          {isXendit && (
-            <div className="mt-10 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
-              <ShieldCheck size={14} className="shrink-0" />
-              Pembayaran diproses oleh <strong className="mx-1">Xendit</strong> atas nama
-              <strong className="mx-1">konsulkan.com</strong> — parent brand dari BikinMacro
-            </div>
-          )}
-
-          <div className="w-full mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            {[
-              { title: "Deskripsikan Masalah", desc: "Ketik instruksi kamu seperti sedang menyuruh asisten.", prompt: "Gabungkan nama dari kolom A dan B ke kolom C" },
-              { title: "AI Generate Kode", desc: "Tunggu beberapa detik, AI akan menuliskan kode VBA yang rapi.", prompt: "Dim i As Long..." },
-              { title: "Copy & Paste", desc: "Langsung salin ke Excel dan jalankan. Selesai!", prompt: "Macro siap dijalankan!" }
-            ].map((step, i) => (
-              <div key={i} className="bg-card border border-border p-6 rounded-2xl">
-                <div className="w-10 h-10 bg-primary/20 text-primary flex items-center justify-center rounded-full font-bold mb-4">
-                  {i + 1}
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">{step.title}</h3>
-                <p className="text-muted text-sm mb-4">{step.desc}</p>
-                <div className="bg-background border border-border p-3 rounded-lg text-xs font-mono text-muted/80">
-                  {step.prompt}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

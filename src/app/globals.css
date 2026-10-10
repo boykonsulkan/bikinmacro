@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens, diambil dari Pelajarin (pelajarinid/app/globals.css + DESIGN.md).
+ * Nama token lama dipertahankan supaya seluruh app ikut ter-skin:
+ *   --primary = BCG Green (aksi utama), --muted = WARNA TEKS sekunder.
+ * Token tambahan BikinMacro: --navy, --input-ink, --warning-*, --excel-*.
+ */
 @theme {
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
@@ -9,35 +15,160 @@
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
   --color-muted: var(--muted);
-  --font-sans: var(--font-inter);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-navy: var(--navy);
+  --color-navy-soft: var(--navy-soft);
+  --color-surface: var(--surface);
+  --color-danger: var(--danger);
+  --color-input-ink: var(--input-ink);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-ink: var(--warning-ink);
+  --color-excel-grid: var(--excel-grid);
+  --color-excel-head: var(--excel-head);
+  --color-excel-select: var(--excel-select);
+  --color-vbe-bg: var(--vbe-bg);
+  --color-vbe-text: var(--vbe-text);
+  --color-vbe-keyword: var(--vbe-keyword);
+  --color-vbe-string: var(--vbe-string);
+  --color-vbe-hl-warn: var(--vbe-hl-warn);
+  --color-vbe-hl-ok: var(--vbe-hl-ok);
+  --font-sans: var(--font-jakarta);
+  --font-serif: var(--font-playfair);
+  --font-mono: var(--font-geist-mono);
+  --shadow-soft: 0 4px 20px rgb(0 0 0 / 0.03);
+  --shadow-soft-hover: 0 8px 30px rgb(0 0 0 / 0.06);
+  --shadow-glow: 0 0 24px rgb(0 148 94 / 0.4);
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root {
-  --primary: #f97316;
-  --primary-hover: #ea580c;
-  --background: #fdfbf7;
-  --foreground: #11181c;
+  --navy: #051c2c;
+  --navy-soft: #1a2e3c;
+  --primary: #00945e;
+  --primary-hover: #007a4e;
+  /* Versi hijau yang lolos kontras 4.5:1 untuk teks putih di atas fill
+     (--action) dan untuk teks hijau di atas background (--accent-ink).
+     #00945e asli cuma 3.9:1 dengan putih. Dipakai di semua komponen baru. */
+  --action: #007a4e;
+  --action-hover: #006b43;
+  --accent-ink: #007a4e;
+  --background: #f4f7f9;
+  --surface: #f9fafb;
+  --foreground: #051c2c;
   --card: #ffffff;
-  --card-foreground: #11181c;
-  --border: #eaeaea;
-  --muted: #8b8b8b;
+  --card-foreground: #051c2c;
+  --border: #e5e7eb;
+  --muted: #4b5563;
+  --danger: #ee1c25;
+  --input-ink: #1d4ed8;
+  --warning-bg: #fffbeb;
+  --warning-border: #fcd34d;
+  --warning-ink: #78350f;
+  --excel-grid: #d9dee3;
+  --excel-head: #eef1f4;
+  --excel-select: #00945e;
+  --vbe-bg: #0b0e14;
+  --vbe-text: #e5e7eb;
+  --vbe-keyword: #7dd3fc;
+  --vbe-string: #fdba74;
+  --vbe-hl-warn: #facc15;
+  --vbe-hl-ok: #34d399;
   color-scheme: light;
 }
 
 .dark {
-  --primary: #fb923c;
-  --primary-hover: #f97316;
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-foreground: #f1f5f9;
-  --border: #334155;
-  --muted: #94a3b8;
+  --navy: #051c2c;
+  --navy-soft: #1a2e3c;
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --action: #047857;
+  --action-hover: #036149;
+  --accent-ink: #34d399;
+  --background: #0b0e14;
+  --surface: #11151c;
+  --foreground: #f4f7f9;
+  --card: #151921;
+  --card-foreground: #f4f7f9;
+  --border: #1f2937;
+  --muted: #9ca3af;
+  --danger: #f43f5e;
+  --input-ink: #93c5fd;
+  --warning-bg: #2a2110;
+  --warning-border: #92400e;
+  --warning-ink: #fde68a;
+  --excel-grid: #2a3340;
+  --excel-head: #1a202a;
+  --excel-select: #10b981;
+  --vbe-bg: #05070b;
+  --vbe-text: #e5e7eb;
+  --vbe-keyword: #7dd3fc;
+  --vbe-string: #fdba74;
+  --vbe-hl-warn: #facc15;
+  --vbe-hl-ok: #34d399;
   color-scheme: dark;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Focus state konsisten untuk semua elemen interaktif */
+:where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Animasi landing (mini demo Excel) ---------- */
+
+/* Garis seleksi putus-putus bergerak, seperti saat Ctrl+C di Excel */
+@keyframes marching-ants {
+  to {
+    background-position: 8px 0, -8px 100%, 0 -8px, 100% 8px;
+  }
+}
+.marching-ants {
+  background-image:
+    linear-gradient(90deg, var(--excel-select) 50%, transparent 50%),
+    linear-gradient(90deg, var(--excel-select) 50%, transparent 50%),
+    linear-gradient(0deg, var(--excel-select) 50%, transparent 50%),
+    linear-gradient(0deg, var(--excel-select) 50%, transparent 50%);
+  background-size: 8px 2px, 8px 2px, 2px 8px, 2px 8px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  animation: marching-ants 0.6s linear infinite;
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.caret-blink {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee-scroll 40s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Semua gerakan mati untuk yang minta reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .marching-ants,
+  .caret-blink,
+  .marquee-track {
+    animation: none;
+  }
 }

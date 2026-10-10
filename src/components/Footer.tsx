@@ -10,7 +10,7 @@ export default function Footer() {
 
         <div className="flex items-center gap-6 text-muted">
           <Link href="/feedback" className="hover:text-foreground transition-colors font-medium">
-            Kirim Masukan
+            Kirim masukan
           </Link>
           <Link href="/help" className="hover:text-foreground transition-colors font-medium">
             Bantuan

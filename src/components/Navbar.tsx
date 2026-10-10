@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import UserNav from './UserNav'
+import { NAV_LINKS, TRY_FREE_HREF } from '@/lib/links'
 
 export default async function Navbar() {
   const supabase = await createClient()
@@ -27,12 +28,19 @@ export default async function Navbar() {
           <Link href="/">BikinMacro</Link>
         </div>
         {!user ? (
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 sm:gap-6 items-center">
+            <div className="hidden lg:flex items-center gap-6 text-muted font-medium">
+              {NAV_LINKS.map((l) => (
+                <Link key={l.href} href={l.href} className="hover:text-foreground transition-colors">
+                  {l.label}
+                </Link>
+              ))}
+            </div>
             <Link href="/auth/login" className="text-muted hover:text-foreground transition-colors font-medium">
               Masuk
             </Link>
-            <Link href="/auth/register" className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-bold transition-all hover:scale-105 shadow-lg shadow-primary/20">
-              Coba Gratis
+            <Link href={TRY_FREE_HREF} className="bg-action hover:bg-action-hover text-white px-5 py-2.5 rounded-lg font-bold transition-colors active:scale-[0.98]">
+              Coba gratis
             </Link>
           </div>
         ) : (
