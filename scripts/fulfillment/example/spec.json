@@ -1,0 +1,37 @@
+{
+  "outputFile": "Contoh_Daftar_Sheet.xlsm",
+  "title": "DAFTAR SHEET",
+  "intro": "Isi pengaturan di bawah, lalu klik Jalankan. Excel akan minta kamu memilih file yang mau dicek.",
+  "macroName": "Jalankan",
+  "buttonText": "Jalankan",
+  "settings": [
+    {
+      "name": "Awalan",
+      "label": "Awalan nama",
+      "type": "text",
+      "default": "Sheet:",
+      "note": "Teks yang ditaruh di depan tiap nama sheet."
+    },
+    {
+      "name": "Info",
+      "label": "Info yang dicatat",
+      "type": "list",
+      "default": "Nama sheet saja",
+      "note": "Pilihan ada di sheet Opsi.",
+      "options": [
+        { "value": "Nama sheet saja", "description": "Cuma nama tiap sheet." },
+        { "value": "Nama sheet dan jumlah baris", "description": "Nama sheet plus jumlah baris yang terpakai." }
+      ]
+    }
+  ],
+  "petunjuk": [
+    {
+      "heading": "Cara pakai",
+      "lines": [
+        "1. Buka sheet Mulai dan isi pengaturannya.",
+        "2. Klik Jalankan, lalu pilih file Excel di pop up.",
+        "3. Lihat hasilnya di sheet Hasil."
+      ]
+    }
+  ]
+}

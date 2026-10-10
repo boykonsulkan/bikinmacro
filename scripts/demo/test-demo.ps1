@@ -37,6 +37,9 @@ try {
 
     # ---------- Isi file contoh ----------
     $s = $xl.Workbooks.Open($sample, 0, $true)
+    $hargaTampil = $s.Worksheets.Item('Penjualan').Range('G2').Text
+    $hargaHarap = ([double]250000).ToString('#,##0', [Globalization.CultureInfo]::InvariantCulture).Replace(',', [string]$xl.International(4))
+    Check "Contoh: format angka Harga tampil rapi ($hargaTampil)" ($hargaTampil -eq $hargaHarap) "harapan $hargaHarap"
     $pj = $s.Worksheets.Item('Penjualan').Range('A1').CurrentRegion.Value2
     Check 'Contoh: 44 baris data + header' ($pj.GetLength(0) -eq 45)
     Check 'Contoh: header Penjualan' ((1..8 | ForEach-Object { $pj[1, $_] }) -join ',' -eq 'No,Tanggal,Sales,Region,Produk,Qty,Harga,Nilai')
@@ -64,6 +67,9 @@ try {
     }
     $sumKomisi = ($exp | Measure-Object -Property Komisi -Sum).Sum
     Check 'Komisi: baris Total' (($v[7, 1] -eq 'Total') -and ([double]$v[7, 6] -eq $sumKomisi))
+    $tampil = $hasil.Range('F5').Text
+    $harap = ([double]$exp[0].Komisi).ToString('#,##0', [Globalization.CultureInfo]::InvariantCulture).Replace(',', [string]$xl.International(4))
+    Check "Komisi: format angka tampil rapi ($tampil)" ($tampil -eq $harap) "harapan $harap"
     Check 'Komisi: status di sheet Mulai' ($mulai.Range('C11').Value2 -like 'Selesai. Komisi 5 Sales*')
 
     # ---------- Mode 2: pecah per Sales ----------

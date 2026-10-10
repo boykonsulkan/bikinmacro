@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# data pesanan pembeli (jangan pernah di-commit)
+/pesanan/

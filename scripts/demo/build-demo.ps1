@@ -25,6 +25,12 @@ $GREEN = RGBc 0 122 78
 $BLUE = RGBc 29 78 216
 $GRAY = RGBc 75 85 99
 
+# Set NumberFormat dengan culture en-US eksplisit. Tanpa ini, Excel yang berlocale
+# Indonesia membaca '#,##0' sebagai "koma = desimal" dan angkanya tampil 250000,0.
+function Set-NumFmt($range, [string]$format) {
+    [void][System.__ComObject].InvokeMember('NumberFormat', [Reflection.BindingFlags]::SetProperty, $null, $range, @($format), [Globalization.CultureInfo]::GetCultureInfo('en-US'))
+}
+
 function Style-Header($range) {
     $range.Font.Bold = $true
     $range.Font.Color = (RGBc 255 255 255)
@@ -66,9 +72,9 @@ try {
         $arr[($i + 1), 7] = "=F$($i + 2)*G$($i + 2)"
     }
     $ws.Range('A1').Resize($n + 1, 8).Formula = $arr
-    $ws.Range("B2:B$($n + 1)").NumberFormat = 'dd/mm/yyyy'
-    $ws.Range("F2:F$($n + 1)").NumberFormat = '0'
-    $ws.Range("G2:H$($n + 1)").NumberFormat = '#,##0'
+    Set-NumFmt $ws.Range("B2:B$($n + 1)") 'dd/mm/yyyy'
+    Set-NumFmt $ws.Range("F2:F$($n + 1)") '0'
+    Set-NumFmt $ws.Range("G2:H$($n + 1)") '#,##0'
     Style-Header $ws.Range('A1:H1')
     $ws.Columns('A:H').AutoFit() | Out-Null
 
@@ -82,8 +88,8 @@ try {
         $wr.Cells.Item($t, 3).Value2 = [double]$tier.Persen
         $t++
     }
-    $wr.Range('A2:B4').NumberFormat = '#,##0'
-    $wr.Range('C2:C4').NumberFormat = '0.0%'
+    Set-NumFmt $wr.Range('A2:B4') '#,##0'
+    Set-NumFmt $wr.Range('C2:C4') '0.0%'
     Style-Header $wr.Range('A1:C1')
     $wr.Range('E1').Value2 = 'Catatan'
     $wr.Range('E1').Font.Bold = $true
