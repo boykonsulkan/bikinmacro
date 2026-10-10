@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { checkKeys } from '@/lib/midtrans/keys'
 const midtransClient = require('midtrans-client')
 
 export async function POST(req: Request) {
@@ -54,15 +55,16 @@ export async function POST(req: Request) {
 
     const serverKey = process.env.MIDTRANS_SERVER_KEY?.trim()
     const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY?.trim()
-    const mode = process.env.NEXT_PUBLIC_MIDTRANS_MODE?.trim() || 'sandbox'
 
-    if (!serverKey || !clientKey) {
-      console.error('Midtrans keys are missing in environment variables')
-      return NextResponse.json({ error: 'Konfigurasi pembayaran belum lengkap (Server/Client Key Kosong).' }, { status: 500 })
+    // Mode (sandbox atau produksi) ditentukan dari awalan key, dan harus satu lingkungan.
+    const keyCheck = checkKeys(serverKey, clientKey)
+    if (!keyCheck.ok) {
+      console.error('Midtrans key check failed:', keyCheck.error)
+      return NextResponse.json({ error: 'Konfigurasi pembayaran belum lengkap. Hubungi admin.' }, { status: 500 })
     }
 
     const snap = new midtransClient.Snap({
-      isProduction: mode === 'production',
+      isProduction: keyCheck.production,
       serverKey: serverKey,
       clientKey: clientKey
     })
@@ -88,8 +90,7 @@ export async function POST(req: Request) {
       expiry: {
         duration: 30,
         unit: 'minutes'
-      },
-      usage_limit: 1
+      }
     }
 
     const transaction = await snap.createTransaction(parameter)

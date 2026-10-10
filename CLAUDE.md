@@ -110,7 +110,7 @@ ANTHROPIC_API_KEY
 OPENAI_API_KEY
 OPENROUTER_API_KEY
 AI_PROVIDER                        # Optional: 'anthropic' | 'openai' | 'openrouter'
-MIDTRANS_SERVER_KEY
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
-NEXT_PUBLIC_MIDTRANS_MODE          # 'production' | 'sandbox'
+MIDTRANS_SERVER_KEY                # Mode (sandbox/produksi) ditentukan dari awalan key (SB-...), lihat docs/midtrans-go-live.md
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY    # Harus satu lingkungan dengan server key
+# NEXT_PUBLIC_MIDTRANS_MODE        # Tidak dipakai lagi
 ```

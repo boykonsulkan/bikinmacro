@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clock, AlertCircle, CheckCircle2, XCircle, ArrowRight, Loader2, X } from 'lucide-react'
+import { snapScriptUrl } from '@/lib/midtrans/keys'
 
 declare global {
   interface Window {
@@ -68,8 +69,32 @@ export default function PaymentManager() {
     return () => clearInterval(interval)
   }, [activePayment])
 
-  const openSnap = (token: string) => {
-    if (!window.snap) return
+  // snap.js dimuat hanya saat orang mau bayar (bukan di setiap halaman).
+  const loadSnap = (): Promise<boolean> =>
+    new Promise((resolve) => {
+      if (window.snap) return resolve(true)
+      const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? ''
+      let script = document.getElementById('midtrans-snap-script') as HTMLScriptElement | null
+      const fresh = !script
+      if (!script) {
+        script = document.createElement('script')
+        script.id = 'midtrans-snap-script'
+        script.src = snapScriptUrl(clientKey)
+        script.async = true
+        script.setAttribute('data-client-key', clientKey)
+      }
+      script.addEventListener('load', () => resolve(!!window.snap))
+      script.addEventListener('error', () => resolve(false))
+      if (fresh) document.head.appendChild(script)
+    })
+
+  const openSnap = async (token: string) => {
+    if (!(await loadSnap())) {
+      setStatus('error')
+      setActivePayment(null)
+      localStorage.removeItem('active_payment')
+      return
+    }
 
     window.snap.pay(token, {
       onSuccess: (result: any) => {
