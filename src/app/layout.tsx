@@ -48,12 +48,17 @@ export const metadata: Metadata = {
 import { ThemeProvider } from "@/components/ThemeProvider";
 import PaymentManager from "@/components/PaymentManager";
 import Script from "next/script";
+import { createClient } from "@/utils/supabase/server";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Tamu (belum login) selalu tampil terang: mereka nggak punya tombol tema.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const midtransUrl = process.env.NEXT_PUBLIC_MIDTRANS_MODE === 'production'
     ? 'https://app.midtrans.com/snap/snap.js'
     : 'https://app.sandbox.midtrans.com/snap/snap.js';
@@ -70,7 +75,7 @@ export default function RootLayout({
           data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
           strategy="beforeInteractive"
         />
-        <ThemeProvider>
+        <ThemeProvider forcedTheme={user ? undefined : "light"}>
           <PaymentManager />
           <LayoutShell navbar={<Navbar />} footer={<Footer />}>
             {children}
