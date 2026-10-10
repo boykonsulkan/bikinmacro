@@ -2,7 +2,7 @@
 // Pakai:  npx tsx scripts/test-midtrans.ts
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { SNAP_PRODUCTION_URL, SNAP_SANDBOX_URL, checkKeys, snapScriptUrl } from '../src/lib/midtrans/keys'
+import { SNAP_PRODUCTION_URL, SNAP_SANDBOX_URL, checkKeys, describeKey, snapScriptUrl } from '../src/lib/midtrans/keys'
 import { notificationOutcome, verifyNotificationSignature } from '../src/lib/midtrans/notification'
 
 let passed = 0
@@ -43,6 +43,17 @@ test('kosong, placeholder, dan salah jenis ditolak', () => {
   ] as const) {
     assert.equal(checkKeys(s, c).ok, false, `harusnya ditolak: ${s} / ${c}`)
   }
+})
+test('describeKey: jenis key tanpa membuka isinya', () => {
+  assert.equal(describeKey(PROD_SERVER, 'server'), 'produksi')
+  assert.equal(describeKey(SB_SERVER, 'server'), 'sandbox')
+  assert.equal(describeKey(PROD_CLIENT, 'client'), 'produksi')
+  assert.equal(describeKey(SB_CLIENT, 'client'), 'sandbox')
+  assert.equal(describeKey(undefined, 'server'), 'kosong')
+  assert.equal(describeKey('  ', 'client'), 'kosong')
+  assert.equal(describeKey('your_midtrans_server_key_here', 'server'), 'placeholder')
+  assert.equal(describeKey(PROD_CLIENT, 'server'), 'tidak dikenal') // peran tertukar
+  assert.equal(describeKey('abc123', 'server'), 'tidak dikenal')
 })
 test('URL snap.js mengikuti client key', () => {
   assert.equal(snapScriptUrl(PROD_CLIENT), SNAP_PRODUCTION_URL)

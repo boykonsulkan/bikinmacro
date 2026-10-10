@@ -17,6 +17,16 @@ export function snapScriptUrl(clientKey?: string | null): string {
   return isSandboxKey(clientKey) ? SNAP_SANDBOX_URL : SNAP_PRODUCTION_URL
 }
 
+export type KeyKind = 'kosong' | 'placeholder' | 'sandbox' | 'produksi' | 'tidak dikenal'
+
+/** Jenis sebuah key, tanpa pernah membuka isinya. Aman ditampilkan ke admin. */
+export function describeKey(key: string | null | undefined, role: 'server' | 'client'): KeyKind {
+  if (!key || !key.trim()) return 'kosong'
+  if (PLACEHOLDER_RE.test(key)) return 'placeholder'
+  if (!key.includes(role === 'server' ? 'Mid-server-' : 'Mid-client-')) return 'tidak dikenal'
+  return isSandboxKey(key) ? 'sandbox' : 'produksi'
+}
+
 export type KeyCheck = { ok: true; production: boolean } | { ok: false; error: string }
 
 /** Pastikan server key dan client key ada, bukan placeholder, dan satu lingkungan. */
