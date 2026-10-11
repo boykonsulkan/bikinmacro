@@ -4,6 +4,9 @@ import { generateText } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba } from '@/lib/ai/guard'
+import { buildGenerateSystem, buildGenerateUser } from '@/lib/ai/prompts'
+import { checkAbuse, logRejection } from '@/lib/ai/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -52,6 +55,9 @@ export async function POST(req: Request) {
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
+    if (typeof prompt !== 'string' || prompt.length > AI_LIMITS.promptMax) {
+      return NextResponse.json({ error: `Permintaan terlalu panjang (maksimal ${AI_LIMITS.promptMax} karakter).` }, { status: 400 })
+    }
 
     // Quota check
     const { data: profile } = await supabase
@@ -80,24 +86,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Quota exhausted' }, { status: 402 })
     }
 
+    // Pengaman penyalahgunaan: ditahan kalau sering ditolak, plus batas per menit dan per hari.
+    if (!isAdmin) {
+      const abuse = await checkAbuse(user.id)
+      if (!abuse.ok) return NextResponse.json({ error: abuse.error }, { status: abuse.status })
+    }
+
     // Build system prompt with optional admin context
     const contextSection = systemContext
       ? `\n\nKonteks tambahan dari admin:\n${systemContext}`
       : ''
 
-    const systemPrompt = `Kamu adalah expert programmer VBA untuk Microsoft Excel. Tugasmu adalah membuat macro VBA yang bersih, efisien, dan siap pakai.
-Output HANYA kode VBA saja, tidak ada penjelasan di luar kode.
-Gunakan komentar dalam kode (bahasa Indonesia). Tambahkan error handling.
-Kode harus langsung bisa di-paste ke Excel VBA Editor. Jangan gunakan library eksternal.${contextSection}
-
-PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permintaan tersebut dengan memberikan komentar VBA seperti ini:
-' ERROR: Maaf, saya hanya bisa membantu membuat macro Excel VBA.`
-
-    const userPrompt = `Buatkan macro Excel VBA untuk: ${prompt}. Pastikan macro aman dijalankan, punya konfirmasi sebelum aksi destruktif, dan berjalan di Excel 2016 ke atas.`
+    const systemPrompt = buildGenerateSystem(contextSection)
+    const userPrompt = buildGenerateUser(prompt)
 
     let genResult
     try {
-      genResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, prompt: userPrompt, temperature: 0.2 })
+      genResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, prompt: userPrompt, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
     } catch (err: any) {
       const errStr = JSON.stringify({ m: err?.message, b: err?.responseBody, c: err?.cause?.message })
       const shouldFallback = (aiProvider === 'openrouter' || (aiProvider === 'gemini' && !!process.env.OPENROUTER_API_KEY)) && (
@@ -118,7 +123,7 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
         for (const fallback of OPENROUTER_FALLBACK_MODELS) {
           try {
             console.warn(`Model ${aiModel} failed, trying fallback: ${fallback}`)
-            genResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, prompt: userPrompt, temperature: 0.2 })
+            genResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, prompt: userPrompt, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
             break
           } catch (e: any) {
             lastErr = e
@@ -127,15 +132,19 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
         if (!genResult) throw lastErr
       } else throw err
     }
-    const { text } = genResult
-
-    let vbaCode = text
-    if (vbaCode.startsWith('```vba')) {
-      vbaCode = vbaCode.replace(/```vba\n?/, '').replace(/```$/, '')
-    } else if (vbaCode.startsWith('```')) {
-      vbaCode = vbaCode.replace(/```\n?/, '').replace(/```$/, '')
+    // Jalur keluar dikunci: cuma VBA valid yang boleh lanjut. Selain itu (penolakan, terjemahan, kode bahasa lain,
+    // perintah berbahaya) nggak disimpan dan NGGAK memotong kredit.
+    const extracted = extractVba(genResult.text)
+    if (!extracted.ok) {
+      await logRejection(user.id, 'generate', extracted.reason, prompt)
+      return NextResponse.json({ error: REJECTION_MESSAGES[extracted.reason], code: extracted.reason }, { status: 422 })
     }
-    vbaCode = vbaCode.trim()
+    const scan = scanVba(extracted.code)
+    if (scan.blocked.length > 0) {
+      await logRejection(user.id, 'generate', 'unsafe', prompt, scan.blocked.join('; '))
+      return NextResponse.json({ error: REJECTION_MESSAGES.unsafe, code: 'unsafe', detail: scan.blocked }, { status: 422 })
+    }
+    const vbaCode = extracted.code
 
     // Update quota (skip for admins)
     if (!isAdmin) {
@@ -154,6 +163,7 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
 
     return NextResponse.json({
       vba_code: vbaCode,
+      warnings: scan.warnings,
       generation_id: inserted?.id,
       max_chat_per_generation: maxChat
     })

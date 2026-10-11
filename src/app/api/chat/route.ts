@@ -4,6 +4,9 @@ import { generateText } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba, trimHistory } from '@/lib/ai/guard'
+import { buildChatSystem, buildChatUser } from '@/lib/ai/prompts'
+import { checkAbuse, logRejection } from '@/lib/ai/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -48,6 +51,9 @@ export async function POST(req: Request) {
     if (!generation_id || !message?.trim()) {
       return NextResponse.json({ error: 'generation_id and message are required' }, { status: 400 })
     }
+    if (typeof message !== 'string' || message.length > AI_LIMITS.chatMessageMax) {
+      return NextResponse.json({ error: `Pesan terlalu panjang (maksimal ${AI_LIMITS.chatMessageMax} karakter).` }, { status: 400 })
+    }
 
     // Verify ownership and get current code
     const { data: generation } = await supabase
@@ -86,6 +92,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Chat limit reached' }, { status: 402 })
     }
 
+    // Pengaman penyalahgunaan: ditahan kalau sering ditolak, plus batas per menit dan per hari.
+    if (!isAdmin) {
+      const abuse = await checkAbuse(user.id)
+      if (!abuse.ok) return NextResponse.json({ error: abuse.error }, { status: abuse.status })
+    }
+
     // Fetch conversation history for this generation
     const { data: history } = await supabase
       .from('generation_chats')
@@ -97,23 +109,14 @@ export async function POST(req: Request) {
       ? `\n\nKonteks tambahan dari admin:\n${settings.system_context}`
       : ''
 
-    const systemPrompt = `Kamu adalah expert programmer VBA untuk Microsoft Excel yang sedang merevisi macro yang sudah ada.
-User akan meminta perubahan spesifik, dan kamu harus memberikan KODE VBA LENGKAP yang sudah diperbarui.${contextSection}
-
-Kode VBA yang sedang direvisi:
-\`\`\`vba
-${generation.output_vba}
-\`\`\`
-
-PENTING:
-- Baris pertama respons HARUS dimulai dengan "PERUBAHAN: " diikuti deskripsi singkat perubahan (bahasa Indonesia, maks 1 kalimat)
-- Setelah baris pertama, output HANYA kode VBA saja (seluruh kode yang sudah diperbarui, bukan hanya bagian yang berubah)
-- Tambahkan error handling dan komentar dalam kode
-- Jangan gunakan library eksternal`
+    const systemPrompt = buildChatSystem(generation.output_vba, contextSection)
 
     const messages = [
-      ...(history || []).map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-      { role: 'user' as const, content: message.trim() }
+      ...trimHistory(history || []).map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.role === 'user' ? buildChatUser(m.content) : m.content
+      })),
+      { role: 'user' as const, content: buildChatUser(message.trim()) }
     ]
 
     const aiProvider = settings?.ai_provider || getFallbackProvider()
@@ -121,7 +124,7 @@ PENTING:
 
     let chatResult
     try {
-      chatResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, messages, temperature: 0.2 })
+      chatResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, messages, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
     } catch (err: any) {
       const errStr = JSON.stringify({ m: err?.message, b: err?.responseBody, c: err?.cause?.message })
       const shouldFallback = (aiProvider === 'openrouter' || (aiProvider === 'gemini' && !!process.env.OPENROUTER_API_KEY)) && (
@@ -142,7 +145,7 @@ PENTING:
         for (const fallback of OPENROUTER_FALLBACK_MODELS) {
           try {
             console.warn(`Model ${aiModel} failed, trying fallback: ${fallback}`)
-            chatResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, messages, temperature: 0.2 })
+            chatResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, messages, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
             break
           } catch (e: any) {
             lastErr = e
@@ -151,25 +154,35 @@ PENTING:
         if (!chatResult) throw lastErr
       } else throw err
     }
-    const { text } = chatResult
+    const text = chatResult.text
 
-    // Parse: first line is the description, rest is VBA code
-    const lines = text.split('\n')
+    // Jalur keluar dikunci: cuma revisi VBA valid yang boleh menimpa macro. Penolakan, terjemahan, kode bahasa lain,
+    // dan perintah berbahaya nggak disimpan, nggak menimpa kode, dan nggak memakai jatah chat.
+    if (/^\s*TOLAK:/i.test(text)) {
+      await logRejection(user.id, 'chat', 'refusal', String(message))
+      return NextResponse.json({ error: REJECTION_MESSAGES.refusal, code: 'refusal' }, { status: 422 })
+    }
+
+    // Baris pertama: "PERUBAHAN: ..." (deskripsi). Sisanya kode.
+    const lines = text.trim().split('\n')
     let changeDescription = 'Kode berhasil diperbarui'
-    let codeLines = lines
-
+    let body = text
     if (lines[0].startsWith('PERUBAHAN:')) {
-      changeDescription = lines[0].replace('PERUBAHAN:', '').trim()
-      codeLines = lines.slice(1)
+      changeDescription = lines[0].replace('PERUBAHAN:', '').trim().slice(0, 300) || changeDescription
+      body = lines.slice(1).join('\n')
     }
 
-    let vbaCode = codeLines.join('\n')
-    if (vbaCode.includes('```vba')) {
-      vbaCode = vbaCode.replace(/```vba\n?/, '').replace(/```[\s]*$/, '')
-    } else if (vbaCode.includes('```')) {
-      vbaCode = vbaCode.replace(/```\n?/, '').replace(/```[\s]*$/, '')
+    const extracted = extractVba(body)
+    if (!extracted.ok) {
+      await logRejection(user.id, 'chat', extracted.reason, String(message))
+      return NextResponse.json({ error: REJECTION_MESSAGES[extracted.reason], code: extracted.reason }, { status: 422 })
     }
-    vbaCode = vbaCode.trim()
+    const scan = scanVba(extracted.code)
+    if (scan.blocked.length > 0) {
+      await logRejection(user.id, 'chat', 'unsafe', String(message), scan.blocked.join('; '))
+      return NextResponse.json({ error: REJECTION_MESSAGES.unsafe, code: 'unsafe', detail: scan.blocked }, { status: 422 })
+    }
+    const vbaCode = extracted.code
 
     // Save user message + assistant description to chat history
     await supabase.from('generation_chats').insert([
@@ -182,6 +195,7 @@ PENTING:
 
     return NextResponse.json({
       vba_code: vbaCode,
+      warnings: scan.warnings,
       message: changeDescription,
       chats_used: (chatCount ?? 0) + 1,
       chats_max: maxChat
