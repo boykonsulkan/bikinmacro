@@ -6,7 +6,7 @@ import { EMAIL_LIMITS, TEMPLATE_KEYS } from '@/lib/email/config'
 import type { TemplateKey } from '@/lib/email/config'
 import { parseRecipients } from '@/lib/email/recipients'
 import { emailConfig, sendOne } from '@/lib/email/resend'
-import { oneLine, renderEmail } from '@/lib/email/templates'
+import { buildCtas, oneLine, renderEmail } from '@/lib/email/templates'
 import { getAdminUser, serviceClient } from '@/lib/orders/server'
 
 export type SendResultRow = { email: string; ok: boolean; note?: string }
@@ -30,7 +30,7 @@ export async function sendEmailAction(_prev: SendState, formData: FormData): Pro
   const template = (TEMPLATE_KEYS as string[]).includes(templateRaw) ? (templateRaw as TemplateKey) : 'free'
   const subject = oneLine(String(formData.get('subject') ?? ''))
   const body = String(formData.get('body') ?? '').trim()
-  const withCta = formData.get('cta') === 'on'
+  const ctas = buildCtas({ coba: formData.get('cta_coba') === 'on', daftar: formData.get('cta_daftar') === 'on' }, siteUrl())
 
   if (!subject) return fail('Subjek belum diisi.')
   if (subject.length > EMAIL_LIMITS.subjectMax) return fail(`Subjek maksimal ${EMAIL_LIMITS.subjectMax} karakter.`)
@@ -90,7 +90,7 @@ export async function sendEmailAction(_prev: SendState, formData: FormData): Pro
       subject,
       body,
       recipient: r,
-      cta: withCta ? { label: 'Daftar sekarang', url: `${siteUrl()}/auth/register` } : null,
+      ctas,
     })
 
     if (already.has(`${r.email}|${rendered.subject}`)) {

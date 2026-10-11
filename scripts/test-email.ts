@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { EMAIL_LIMITS, TEMPLATES } from '../src/lib/email/config'
 import { cleanName, parseRecipients } from '../src/lib/email/recipients'
 import { emailConfig, sendOne } from '../src/lib/email/resend'
-import { escapeHtml, oneLine, renderEmail } from '../src/lib/email/templates'
+import { buildCtas, escapeHtml, oneLine, renderEmail } from '../src/lib/email/templates'
 
 let passed = 0
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -46,7 +46,7 @@ async function main() {
       subject: 'Halo {nama}\nBcc: x',
       body: 'Baris <b>satu</b>\nbaris dua\n\nParagraf "dua" & {nama}',
       recipient: { email: 'a@b.co', name: 'Budi' },
-      cta: { label: 'Daftar', url: 'https://bikinmacro.my.id/auth/register?a=1&b=2' },
+      ctas: [{ label: 'Daftar', url: 'https://bikinmacro.my.id/auth/register?a=1&b=2' }],
     })
     assert.equal(r.subject, 'Halo Budi Bcc: x')
     assert.ok(r.html.includes('Halo Budi,'))
@@ -61,6 +61,36 @@ async function main() {
     assert.ok(r.html.includes('Halo,'))
     assert.ok(r.html.includes('Hai kamu'))
     assert.ok(!r.html.includes('<a href'))
+  })
+  await test('tombol: coba jadi utama, daftar jadi kedua (outline); sendirian jadi utama', () => {
+    const both = buildCtas({ coba: true, daftar: true }, 'https://bikinmacro.my.id/')
+    assert.deepEqual(both.map((c) => [c.label, c.url, c.style]), [
+      ['Coba contoh dulu', 'https://bikinmacro.my.id/coba', 'primary'],
+      ['Daftar sebagai beta tester', 'https://bikinmacro.my.id/auth/register', 'secondary'],
+    ])
+    assert.equal(buildCtas({ coba: false, daftar: true }, 'https://x.id')[0].style, 'primary')
+    assert.equal(buildCtas({ coba: true, daftar: false }, 'https://x.id').length, 1)
+    assert.deepEqual(buildCtas({ coba: false, daftar: false }, 'https://x.id'), [])
+  })
+  await test('dua tombol dirender berurutan dengan gaya berbeda, dan muncul di versi teks', () => {
+    const r = renderEmail({
+      subject: 's',
+      body: 'isi email yang cukup panjang',
+      recipient: { email: 'a@b.co', name: '' },
+      ctas: buildCtas({ coba: true, daftar: true }, 'https://bikinmacro.my.id'),
+    })
+    const iCoba = r.html.indexOf('/coba')
+    const iDaftar = r.html.indexOf('/auth/register')
+    assert.ok(iCoba > 0 && iDaftar > iCoba, 'tombol coba harus di atas tombol daftar')
+    assert.ok(r.html.includes('bgcolor="#007a4e"') && r.html.includes('bgcolor="#ffffff"'), 'satu hijau penuh, satu outline')
+    assert.ok(r.text.includes('Coba contoh dulu: https://bikinmacro.my.id/coba'))
+    assert.ok(r.text.includes('Daftar sebagai beta tester: https://bikinmacro.my.id/auth/register'))
+    assert.ok(!renderEmail({ subject: 's', body: 'isi email yang cukup panjang', recipient: { email: 'a@b.co', name: '' } }).html.includes('<a href'))
+  })
+  await test('undangan beta menyebut demo tanpa daftar dan syarat Excel Windows', () => {
+    const b = TEMPLATES.beta_invite
+    assert.ok(b.ctas.coba && b.ctas.daftar)
+    assert.ok(/nggak perlu daftar/i.test(b.body) && /Windows/.test(b.body))
   })
   await test('template bawaan nggak memakai em dash atau en dash', () => {
     for (const t of Object.values(TEMPLATES)) assert.ok(!/[–—]/.test(t.subject + t.body))
