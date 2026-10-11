@@ -21,6 +21,18 @@ Halaman: `/north/email`. Email **cuma terkirim saat admin menekan tombol**. Ngga
    menolak bekerja kalau tabelnya belum ada, supaya nggak ada email yang terkirim tanpa tercatat.
 5. Buka `/north/email`, klik **Kirim tes ke saya** dulu, lalu cek inbox (dan folder spam).
 
+## Balasan penerima masuk ke mana?
+
+Resend cuma **mengirim**. Balasan penerima dikirim ke alamat `Reply-To`, atau kalau itu kosong, ke alamat pengirim (`EMAIL_FROM`).
+
+- **Isi `EMAIL_REPLY_TO`** dengan email yang kamu baca (misalnya Gmail-mu). Itu cara tercepat dan nggak butuh pengaturan DNS.
+  Halaman `/north/email` menampilkan alamat balasan yang aktif dan memperingatkan kalau belum diisi.
+- Kalau `EMAIL_REPLY_TO` kosong dan pengirimnya `onboarding@resend.dev` atau alamat di domain tanpa email hosting (nggak ada
+  record MX), balasan **hilang** atau mental.
+- Mau balasan masuk ke kotak masuk di domain sendiri (misalnya `halo@bikinmacro.my.id`)? Perlu email hosting atau layanan
+  penerusan email dengan record MX di DNS. Resend juga punya fitur menerima email, tapi itu perlu setup tersendiri dan nggak
+  dipakai oleh kode ini.
+
 ## Pengaman bawaan
 
 - Hanya admin. Tamu diarahkan ke login, dan server action mengecek ulang role admin.

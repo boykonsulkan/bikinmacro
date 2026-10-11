@@ -26,13 +26,22 @@ export default async function AdminEmailPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Email</h1>
         <p className="mt-1 text-sm text-muted">
           Kirim email lewat Resend dari sini, cuma saat kamu menekan tombol. Maksimal {EMAIL_LIMITS.maxRecipientsPerSend} penerima sekali
-          kirim dan {EMAIL_LIMITS.maxPerDay} per 24 jam. Pengirim: <span className="font-mono">{cfg.from}</span>
+          kirim dan {EMAIL_LIMITS.maxPerDay} per 24 jam. Pengirim: <span className="font-mono">{cfg.from}</span>. Balasan penerima masuk
+          ke: <span className="font-mono">{cfg.replyTo ?? `${cfg.from} (alamat pengirim)`}</span>
         </p>
       </div>
 
       {error && (
         <p className="rounded-lg border border-warning-border bg-warning-bg p-4 text-sm font-semibold text-warning-ink">
           Tabel email_logs belum ada. Jalankan scripts/email_schema.sql di Supabase. Tombol kirim akan menolak sampai tabelnya ada.
+        </p>
+      )}
+
+      {!cfg.replyTo && (
+        <p className="rounded-lg border border-warning-border bg-warning-bg p-4 text-sm font-semibold text-warning-ink">
+          EMAIL_REPLY_TO belum diisi, jadi balasan penerima akan dikirim ke alamat pengirim ({cfg.from}). Kalau alamat itu nggak punya
+          kotak masuk (misalnya onboarding@resend.dev atau alamat domain tanpa email hosting), balasan HILANG. Isi EMAIL_REPLY_TO
+          dengan email yang kamu baca, lalu deploy ulang.
         </p>
       )}
 
