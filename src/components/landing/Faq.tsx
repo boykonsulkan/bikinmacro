@@ -1,12 +1,12 @@
 import { ChevronDown } from 'lucide-react'
 import { container, eyebrow, sectionHeading } from './ui'
 
-// TODO: jawaban "Data saya aman?" harus dicek ulang sama kebijakan data yang
-// beneran berlaku (apa yang disimpan, berapa lama, provider AI yang dipakai).
+// Jawaban "Data saya aman?" menjelaskan perilaku produk saat ini (permintaan dan kode disimpan di akun, dibaca admin,
+// diproses penyedia AI). Kalau kebijakan data berubah, ubah teks ini.
 const ITEMS = [
   {
     q: 'Data saya aman?',
-    a: 'Macro-nya jalan di Excel di laptop kamu sendiri, jadi file kerja kamu nggak dikirim ke mana mana pas macro dijalankan. Buat contoh file yang kamu upload, hapus atau samarkan isi yang sensitif. Struktur sheet dan header kolom aja sudah cukup. [KONFIRMASI: sesuaikan dengan kebijakan penyimpanan data]',
+    a: 'Macro jalan di Excel di laptop kamu sendiri, jadi isi file kerja kamu nggak dikirim ke kami. Yang kami simpan adalah permintaan dan kode macro yang kamu buat, supaya muncul di Riwayat dan bisa kamu lanjutkan. Tim BikinMacro bisa membacanya untuk memperbaiki produk, dan teks permintaan diproses penyedia AI untuk membuat macro. Jadi cukup sebut nama sheet dan kolom, jangan tulis data sensitif seperti nomor rekening atau gaji asli.',
   },
   {
     q: 'Pakai Excel yang mana?',
@@ -14,11 +14,15 @@ const ITEMS = [
   },
   {
     q: 'Kalau macronya salah?',
-    a: 'Tempel pesan error-nya, atau ceritain hasil yang meleset. Kami benerin dan kirim versi barunya, gratis.',
+    a: 'Tempel pesan error-nya, atau ceritain hasil yang meleset, di chat. AI memperbaiki macro-nya sesuai jatah revisi paketmu (Addon 5, Starter 10, Pro 50 per macro). Untuk kasus yang rumit, ada layanan Dibuatin.',
   },
   {
     q: 'Habis bayar, gimana?',
-    a: 'Isi form pesanan dengan nomor order Midtrans, cerita kerjaan, dan contoh file kamu. Kami cek pembayarannya, bikin file Excel-nya, lalu kamu bisa pantau dan minta revisi lewat chat di halaman pesanan.',
+    a: 'Paket langsung aktif di akunmu begitu pembayaran berhasil. Buka halaman Generate dan mulai bikin macro. Kalau belum aktif setelah beberapa menit, hubungi kami lewat halaman Bantuan.',
+  },
+  {
+    q: 'Apa bedanya file .bas dan .xlsm?',
+    a: 'File .bas berisi kode yang kamu import ke Excel sendiri. Ini cara paling stabil dan yang kami sarankan. File .xlsm adalah workbook kosong yang sudah berisi macro, masih tahap uji. Setelah macro terpasang, simpan filemu sebagai Excel Macro-Enabled Workbook (.xlsm), bukan .xlsx biasa, kalau tidak macro-nya hilang.',
   },
   {
     q: 'Perlu install sesuatu?',

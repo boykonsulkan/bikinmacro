@@ -11,18 +11,18 @@ const STEPS = [
     Scene: CeritainScene,
   },
   {
-    title: 'AI cek file kamu',
-    text: 'Upload contoh file. AI baca header dan kolomnya, jadi macro nyambung ke data aslimu.',
+    title: 'Detailkan datanya',
+    text: 'Sebut nama sheet, kolom, dan hasil yang kamu mau, jadi macro-nya pas dengan datamu.',
     Scene: CekFileScene,
   },
   {
-    title: 'Download dan klik',
-    text: 'Dapat file Excel siap jalan. Buka, isi pengaturan, klik Jalankan.',
+    title: 'Unduh dan pasang',
+    text: 'Unduh file .bas (atau Excel .xlsm beta), import ke Excel, lalu jalankan. Panduannya ada di halaman hasil.',
     Scene: DownloadScene,
   },
   {
     title: 'Error? Tempel aja',
-    text: 'Macro error? Tempel pesan error-nya, versi baru dikirim gratis.',
+    text: 'Macro error? Tempel pesan error-nya di chat, AI memperbaikinya sesuai jatah revisi paketmu.',
     Scene: ErrorFixScene,
   },
 ]

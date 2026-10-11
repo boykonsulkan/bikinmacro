@@ -1,12 +1,12 @@
 import Link from 'next/link'
-import { FileCheck2, Monitor, Wrench } from 'lucide-react'
+import { FileCode2, MessageSquare, Monitor } from 'lucide-react'
 import { TRY_FREE_HREF } from '@/lib/links'
 import HeroWorkbookScene from './motion/HeroWorkbookScene'
 import { btnOutline, btnPrimary, container, eyebrow } from './ui'
 
 const POINTS = [
-  { icon: FileCheck2, text: 'File .xlsm siap pakai' },
-  { icon: Wrench, text: 'Error? Dibenerin gratis' },
+  { icon: FileCode2, text: 'Unduh .bas atau Excel .xlsm (beta)' },
+  { icon: MessageSquare, text: 'Revisi lewat chat' },
   { icon: Monitor, text: 'Jalan di Excel Windows' },
 ]
 
@@ -20,8 +20,8 @@ export default function Hero() {
             Kerjaan Excel berjam jam, beres sekali klik.
           </h1>
           <p className="mt-6 max-w-xl text-base font-medium leading-relaxed text-muted sm:text-lg">
-            Ceritain masalahnya dan upload contoh file. Kamu dapat file Excel yang langsung jalan, lengkap dengan
-            tombol Jalankan. Nggak perlu buka VBA sama sekali.
+            Ceritain masalahnya pakai bahasa sehari hari. AI menulis macro-nya, kamu unduh lalu jalankan di Excel.
+            Nggak perlu bisa coding, dan ada panduan langkah demi langkah di halaman hasil.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

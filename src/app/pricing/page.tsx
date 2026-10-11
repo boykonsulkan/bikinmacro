@@ -149,7 +149,7 @@ export default async function PricingPage() {
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> Unlimited macro
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
-              <Check size={18} className="text-primary shrink-0 mt-0.5" /> Unlimited refinements
+              <Check size={18} className="text-primary shrink-0 mt-0.5" /> 50 refinement chats per macro
             </li>
             <li className="flex items-start gap-3 text-sm text-foreground">
               <Check size={18} className="text-primary shrink-0 mt-0.5" /> History ✓
