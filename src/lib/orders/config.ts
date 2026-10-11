@@ -9,6 +9,9 @@ export const PLANS = {
 export type PlanKey = keyof typeof PLANS
 export const PLAN_KEYS = Object.keys(PLANS) as PlanKey[]
 
+/** Paket yang masih dijual lewat form pesanan. Paket lama tetap valid supaya pesanan lama dan pembayaran yang sudah masuk tetap bisa diproses. */
+export const SOLD_PLAN_KEYS: PlanKey[] = ['dibuatin']
+
 export function planTotals(plan: PlanKey) {
   const p = PLANS[plan]
   return { outputs: p.outputs, revisions: p.outputs * p.revisionsPerOutput }

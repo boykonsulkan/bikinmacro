@@ -6,7 +6,7 @@ import { container, eyebrow, sectionHeading } from './ui'
 const ITEMS = [
   {
     q: 'Data saya aman?',
-    a: 'Macro jalan di Excel di laptop kamu sendiri, jadi isi file kerja kamu nggak dikirim ke kami. Yang kami simpan adalah permintaan dan kode macro yang kamu buat, supaya muncul di Riwayat dan bisa kamu lanjutkan. Tim BikinMacro bisa membacanya untuk memperbaiki produk, dan teks permintaan diproses penyedia AI untuk membuat macro. Jadi cukup sebut nama sheet dan kolom, jangan tulis data sensitif seperti nomor rekening atau gaji asli.',
+    a: 'Macro jalan di Excel di laptop kamu sendiri, jadi isi file kerja kamu nggak dikirim ke kami. Yang kami simpan adalah permintaan dan kode macro yang kamu buat, supaya muncul di Riwayat dan bisa kamu lanjutkan. Data itu hanya dipakai tim BikinMacro untuk riset dan pengembangan platform, dan tidak akan pernah disalahgunakan. Teks permintaan juga diproses penyedia AI untuk membuat macro, jadi cukup sebut nama sheet dan kolom, jangan tulis data sensitif seperti nomor rekening atau gaji asli.',
   },
   {
     q: 'Pakai Excel yang mana?',
@@ -18,7 +18,7 @@ const ITEMS = [
   },
   {
     q: 'Habis bayar, gimana?',
-    a: 'Paket langsung aktif di akunmu begitu pembayaran berhasil. Buka halaman Generate dan mulai bikin macro. Kalau belum aktif setelah beberapa menit, hubungi kami lewat halaman Bantuan.',
+    a: 'Paket Addon, Starter, dan Pro aktif otomatis di akunmu begitu pembayaran berhasil, jadi langsung buka halaman Generate. Kalau belum aktif setelah beberapa menit, hubungi kami lewat halaman Bantuan. Untuk layanan Dibuatin, setelah bayar isi form pesanan dengan nomor order Midtrans dan cerita kerjaan kamu, lalu pantau statusnya di halaman pesanan.',
   },
   {
     q: 'Apa bedanya file .bas dan .xlsm?',

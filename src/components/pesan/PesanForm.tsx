@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import Link from 'next/link'
 import { AlertCircle, Check, Copy, Loader2 } from 'lucide-react'
-import { ORDER_LIMITS, PLANS, PLAN_KEYS } from '@/lib/orders/config'
+import { ORDER_LIMITS, PLANS, SOLD_PLAN_KEYS } from '@/lib/orders/config'
 import type { PlanKey } from '@/lib/orders/config'
 import { saveOrderToken } from './format'
 
@@ -18,7 +18,7 @@ const hint = 'text-xs font-medium text-muted'
 const err = 'text-xs font-semibold text-danger'
 
 export default function PesanForm({ defaultPlan }: { defaultPlan?: PlanKey }) {
-  const [plan, setPlan] = useState<PlanKey | ''>(defaultPlan ?? '')
+  const [plan, setPlan] = useState<PlanKey | ''>(defaultPlan ?? SOLD_PLAN_KEYS[0])
   const [description, setDescription] = useState('')
   const [fileName, setFileName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -107,9 +107,9 @@ export default function PesanForm({ defaultPlan }: { defaultPlan?: PlanKey }) {
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className={label}>Paket yang kamu beli</legend>
-        <div className="mt-1 grid gap-2 sm:grid-cols-3">
-          {PLAN_KEYS.map((k) => (
+        <legend className={label}>Layanan yang kamu bayar</legend>
+        <div className="mt-1 grid gap-2">
+          {SOLD_PLAN_KEYS.map((k) => (
             <label
               key={k}
               className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-3 text-sm transition focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${

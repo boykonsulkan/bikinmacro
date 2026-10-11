@@ -100,7 +100,11 @@ export default function Pricing({ xenditNotice = false }: { xenditNotice?: boole
           <div>
             <h3 className="text-base font-bold">Dibuatin, untuk kasus rumit</h3>
             <p className="mt-1 text-sm font-medium text-slate-300">
-              Mulai dari Rp750.000. Dikerjakan praktisi finance, ada sesi serah terima.
+              Mulai dari Rp750.000. Dikerjakan praktisi finance, ada sesi serah terima.{' '}
+              <Link href="/pesan" className="font-bold text-white underline underline-offset-4">
+                Sudah bayar? Isi form pesanan
+              </Link>
+              .
             </p>
           </div>
           <Link href="/help" className={`shrink-0 ${btnOutlineOnDark}`}>

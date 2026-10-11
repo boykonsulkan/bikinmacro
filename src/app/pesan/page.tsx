@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import PesanForm from '@/components/pesan/PesanForm'
-import { PAYMENT_LINK_BASIC } from '@/lib/links'
 
 export const metadata: Metadata = {
   title: 'Pesan macro | BikinMacro',
-  description: 'Sudah bayar? Isi form ini supaya kerjaan kamu mulai dibikin.',
+  description: 'Sudah bayar layanan Dibuatin? Isi form ini supaya kerjaan kamu mulai dikerjakan.',
   robots: { index: false, follow: false },
 }
 
 const STEPS = [
-  'Bayar paket kamu lewat Midtrans.',
+  'Ngobrol dulu di halaman Bantuan: sepakati kerjaan, lingkup, dan harga.',
+  'Bayar sesuai kesepakatan lewat Midtrans.',
   'Isi form ini dengan nomor order dan cerita kerjaan kamu.',
   'Pantau status dan chat revisi di halaman pesanan.',
 ]
@@ -35,15 +35,11 @@ export default function PesanPage() {
       </ol>
 
       <p className="mt-6 text-sm font-medium text-muted">
-        Belum bayar?{' '}
-        <a href={PAYMENT_LINK_BASIC} target="_blank" rel="noopener noreferrer" className="font-bold text-accent-ink underline">
-          Bayar paket 1 Output (Rp25.000)
-        </a>
-        . Untuk paket lain,{' '}
+        Form ini untuk layanan Dibuatin. Belum sepakat soal kerjaan dan harga?{' '}
         <Link href="/help" className="font-bold text-accent-ink underline">
-          tanya dulu di Bantuan
+          Tanya dulu di Bantuan
         </Link>
-        .
+        . Untuk paket Addon, Starter, dan Pro nggak perlu form: paket aktif otomatis setelah bayar.
       </p>
 
       <div className="mt-8">
