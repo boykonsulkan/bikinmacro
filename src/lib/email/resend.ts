@@ -4,10 +4,15 @@
 const ENDPOINT = 'https://api.resend.com/emails'
 const SANDBOX_FROM = 'BikinMacro <onboarding@resend.dev>'
 
+// Balasan penerima masuk ke sini kalau EMAIL_REPLY_TO nggak diisi. Sementara, sampai alamat balasan resmi ada.
+export const DEFAULT_REPLY_TO = 'founder@pelajarin.id'
+
 export type EmailConfig = {
   configured: boolean
   from: string
-  replyTo: string | undefined
+  replyTo: string
+  /** True kalau replyTo memakai bawaan (EMAIL_REPLY_TO kosong). */
+  replyToIsDefault: boolean
   /** Pengirim masih sandbox Resend: cuma bisa kirim ke email pemilik akun Resend. */
   sandbox: boolean
 }
@@ -18,7 +23,8 @@ export function emailConfig(env: Record<string, string | undefined> = process.en
   return {
     configured: !!key && key.startsWith('re_'),
     from,
-    replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+    replyTo: env.EMAIL_REPLY_TO?.trim() || DEFAULT_REPLY_TO,
+    replyToIsDefault: !env.EMAIL_REPLY_TO?.trim(),
     sandbox: /@resend\.dev>?$/i.test(from),
   }
 }

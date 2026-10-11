@@ -27,7 +27,7 @@ export default async function AdminEmailPage() {
         <p className="mt-1 text-sm text-muted">
           Kirim email lewat Resend dari sini, cuma saat kamu menekan tombol. Maksimal {EMAIL_LIMITS.maxRecipientsPerSend} penerima sekali
           kirim dan {EMAIL_LIMITS.maxPerDay} per 24 jam. Pengirim: <span className="font-mono">{cfg.from}</span>. Balasan penerima masuk
-          ke: <span className="font-mono">{cfg.replyTo ?? `${cfg.from} (alamat pengirim)`}</span>
+          ke: <span className="font-mono">{cfg.replyTo}</span>{cfg.replyToIsDefault ? ' (bawaan sementara)' : ''}
         </p>
       </div>
 
@@ -37,11 +37,10 @@ export default async function AdminEmailPage() {
         </p>
       )}
 
-      {!cfg.replyTo && (
-        <p className="rounded-lg border border-warning-border bg-warning-bg p-4 text-sm font-semibold text-warning-ink">
-          EMAIL_REPLY_TO belum diisi, jadi balasan penerima akan dikirim ke alamat pengirim ({cfg.from}). Kalau alamat itu nggak punya
-          kotak masuk (misalnya onboarding@resend.dev atau alamat domain tanpa email hosting), balasan HILANG. Isi EMAIL_REPLY_TO
-          dengan email yang kamu baca, lalu deploy ulang.
+      {cfg.replyToIsDefault && (
+        <p className="rounded-lg border border-border bg-card p-4 text-sm font-medium text-muted">
+          Balasan penerima sementara masuk ke {cfg.replyTo} (bawaan di kode). Untuk menggantinya, isi EMAIL_REPLY_TO di environment
+          lalu deploy ulang.
         </p>
       )}
 

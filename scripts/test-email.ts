@@ -70,11 +70,12 @@ async function main() {
     assert.equal(oneLine('a\r\nb\tc  d'), 'a b c d')
   })
   await test('config: sandbox terdeteksi, key harus berawalan re_', () => {
-    assert.deepEqual(emailConfig({}), { configured: false, from: 'BikinMacro <onboarding@resend.dev>', replyTo: undefined, sandbox: true })
+    assert.deepEqual(emailConfig({}), { configured: false, from: 'BikinMacro <onboarding@resend.dev>', replyTo: 'founder@pelajarin.id', replyToIsDefault: true, sandbox: true })
     const c = emailConfig({ RESEND_API_KEY: 're_abc', EMAIL_FROM: 'BikinMacro <halo@bikinmacro.my.id>', EMAIL_REPLY_TO: 'boy@x.com' })
     assert.equal(c.configured, true)
     assert.equal(c.sandbox, false)
     assert.equal(c.replyTo, 'boy@x.com')
+    assert.equal(c.replyToIsDefault, false)
     assert.equal(emailConfig({ RESEND_API_KEY: 'bukan-key' }).configured, false)
   })
 
