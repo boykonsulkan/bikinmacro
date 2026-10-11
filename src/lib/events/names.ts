@@ -15,6 +15,8 @@ export const CLIENT_EVENTS = [
 export const SERVER_EVENTS = [
   'generate_success', // macro berhasil dibuat (props: category, prompt_len, ms)
   'chat_success', // revisi lewat chat berhasil
+  'explain_success', // penjelasan kode lewat chat berhasil
+  'explain_limit', // pertanyaan penjelasan ditolak karena batas per macro
   'download_xlsm', // file .xlsm berhasil dirakit
   'download_xlsm_failed', // perakitan .xlsm gagal atau ditolak (props: reason)
 ] as const

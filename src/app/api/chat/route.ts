@@ -4,7 +4,7 @@ import { generateText } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba, trimHistory } from '@/lib/ai/guard'
+import { AI_LIMITS, EXPLAIN_PREFIX, REJECTION_MESSAGES, extractExplanation, extractVba, looksLikeExplainRequest, scanVba, trimHistory } from '@/lib/ai/guard'
 import { buildChatSystem, buildChatUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection } from '@/lib/ai/server'
@@ -93,6 +93,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Chat limit reached' }, { status: 402 })
     }
 
+    // Penjelasan kode yang sudah dijawab untuk macro ini (jawaban asisten yang diawali "PENJELASAN:").
+    // Setelah batasnya habis, pertanyaan penjelasan nggak dijawab lagi (admin dikecualikan).
+    const { count: explainCount } = await supabase
+      .from('generation_chats')
+      .select('*', { count: 'exact', head: true })
+      .eq('generation_id', generation_id)
+      .eq('user_id', user.id)
+      .eq('role', 'assistant')
+      .like('content', `${EXPLAIN_PREFIX}%`)
+    const explainUsed = explainCount ?? 0
+    const explainLocked = !isAdmin && explainUsed >= AI_LIMITS.explainMax
+    if (explainLocked && looksLikeExplainRequest(message)) {
+      await trackEvent(user.id, 'explain_limit')
+      return NextResponse.json({ error: REJECTION_MESSAGES.explain_limit, code: 'explain_limit' }, { status: 422 })
+    }
+
     // Pengaman penyalahgunaan: ditahan kalau sering ditolak, plus batas per menit dan per hari.
     if (!isAdmin) {
       const abuse = await checkAbuse(user.id)
@@ -164,6 +180,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: REJECTION_MESSAGES.refusal, code: 'refusal' }, { status: 422 })
     }
 
+    // Jalur penjelasan: kode nggak berubah, jawabannya cuma teks pendek tentang macro ini.
+    if (/^\s*PENJELASAN:/i.test(text)) {
+      if (explainLocked) {
+        await trackEvent(user.id, 'explain_limit')
+        return NextResponse.json({ error: REJECTION_MESSAGES.explain_limit, code: 'explain_limit' }, { status: 422 })
+      }
+      const explained = extractExplanation(text)
+      if (!explained.ok) {
+        await logRejection(user.id, 'chat', explained.reason === 'not_explanation' ? 'not_vba' : explained.reason, String(message))
+        return NextResponse.json(
+          { error: 'Penjelasannya nggak bisa ditampilkan. Coba tanya lebih spesifik tentang satu bagian kode.', code: 'explain_invalid' },
+          { status: 422 },
+        )
+      }
+      await supabase.from('generation_chats').insert([
+        { generation_id, user_id: user.id, role: 'user', content: message.trim() },
+        { generation_id, user_id: user.id, role: 'assistant', content: `${EXPLAIN_PREFIX} ${explained.text}` },
+      ])
+      await trackEvent(user.id, 'explain_success', { n: explainUsed + 1 })
+      return NextResponse.json({
+        kind: 'explain',
+        message: explained.text,
+        chats_used: (chatCount ?? 0) + 1,
+        chats_max: maxChat,
+        explain_used: explainUsed + 1,
+        explain_max: AI_LIMITS.explainMax,
+      })
+    }
+
     // Baris pertama: "PERUBAHAN: ..." (deskripsi). Sisanya kode.
     const lines = text.trim().split('\n')
     let changeDescription = 'Kode berhasil diperbarui'
@@ -196,6 +241,9 @@ export async function POST(req: Request) {
     await trackEvent(user.id, 'chat_success', { n: (chatCount ?? 0) + 1 })
 
     return NextResponse.json({
+      kind: 'change',
+      explain_used: explainUsed,
+      explain_max: AI_LIMITS.explainMax,
       vba_code: vbaCode,
       warnings: scan.warnings,
       message: changeDescription,

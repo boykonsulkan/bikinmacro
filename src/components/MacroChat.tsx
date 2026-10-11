@@ -7,7 +7,11 @@ import { codeToHtml } from 'shiki'
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
+  /** Jawaban penjelasan kode (bukan revisi). */
+  explain?: boolean
 }
+
+const EXPLAIN_MAX_DEFAULT = 5
 
 export default function MacroChat({
   generationId,
@@ -30,6 +34,8 @@ export default function MacroChat({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [chatsUsed, setChatsUsed] = useState(() => (initialMessages ?? []).filter((m) => m.role === 'user').length)
+  const [explainUsed, setExplainUsed] = useState(() => (initialMessages ?? []).filter((m) => m.explain).length)
+  const [explainMax, setExplainMax] = useState(EXPLAIN_MAX_DEFAULT)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const chatsRemaining = maxChats - chatsUsed
@@ -76,8 +82,16 @@ export default function MacroChat({
       }
 
       const data = await res.json()
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
       setChatsUsed(data.chats_used)
+      if (typeof data.explain_used === 'number') setExplainUsed(data.explain_used)
+      if (typeof data.explain_max === 'number') setExplainMax(data.explain_max)
+
+      // Penjelasan: cuma teks, kode di kanan nggak berubah.
+      if (data.kind === 'explain') {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.message, explain: true }])
+        return
+      }
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
 
       const html = await codeToHtml(data.vba_code, { lang: 'vb', theme: 'github-dark' })
       onCodeUpdate(data.vba_code, html)
@@ -132,9 +146,11 @@ export default function MacroChat({
                 : 'bg-card border border-border text-foreground rounded-bl-sm shadow-sm'
             }`}>
               {m.role === 'assistant' && (
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-1">BikinMacro AI</span>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-1">
+                  BikinMacro AI{m.explain ? ' · Penjelasan' : ''}
+                </span>
               )}
-              {m.content}
+              <span className="whitespace-pre-wrap">{m.content}</span>
             </div>
           </div>
           {i === 0 && (
@@ -152,7 +168,10 @@ export default function MacroChat({
                   Penting: simpan hasilnya lewat Save As bertipe Excel Macro-Enabled Workbook (.xlsm), bukan .xlsx
                   biasa, supaya macro-nya tidak hilang.
                 </p>
-                <p className="mt-2">Ada bagian kode yang bikin bingung? Tanya di sini, aku jelaskan.</p>
+                <p className="mt-2">
+                  Ada bagian kode yang bikin bingung? Tanya di sini, aku jelaskan (maksimal {explainMax} penjelasan per macro).
+                  Kalau masih belum jelas, minta versi yang lebih sederhana atau dengan komentar lebih banyak.
+                </p>
               </div>
             </div>
           )}
@@ -187,6 +206,11 @@ export default function MacroChat({
           </div>
         ) : (
           <div className="relative group">
+            {explainUsed > 0 && (
+              <p className="mb-2 text-[11px] font-medium text-muted">
+                Penjelasan kode: {explainUsed} / {explainMax}{explainUsed >= explainMax ? ' (batas tercapai, tapi kamu masih bisa minta perubahan)' : ''}
+              </p>
+            )}
             <input
               type="text"
               value={input}

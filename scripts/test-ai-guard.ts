@@ -1,6 +1,6 @@
 // Tes pengaman AI (murni, tanpa jaringan). Pakai:  npx tsx scripts/test-ai-guard.ts
 import assert from 'node:assert/strict'
-import { AI_LIMITS, extractVba, scanVba, stripVbaComments, trimHistory, wrapUserText } from '../src/lib/ai/guard'
+import { AI_LIMITS, REJECTION_MESSAGES, extractExplanation, extractVba, looksLikeExplainRequest, scanVba, stripVbaComments, trimHistory, wrapUserText } from '../src/lib/ai/guard'
 import { buildChatSystem, buildGenerateSystem, buildGenerateUser } from '../src/lib/ai/prompts'
 
 let passed = 0
@@ -132,6 +132,52 @@ test('prompt memuat aturan keamanan dan membungkus input; nggak ada em dash atau
   const c = buildChatSystem(OK_CODE)
   assert.ok(c.includes('TOLAK:') && c.includes(OK_CODE))
   assert.ok(!/[\u2013\u2014]/.test(g + c))
+})
+
+// ---------- penjelasan kode: boleh dijawab, tapi dibatasi ----------
+test('batas penjelasan 5 per macro, dengan pesan penolakan yang memberi jalan keluar', () => {
+  assert.equal(AI_LIMITS.explainMax, 5)
+  assert.ok(REJECTION_MESSAGES.explain_limit.includes('5x'))
+  assert.ok(/sederhana|komentar/.test(REJECTION_MESSAGES.explain_limit))
+  assert.ok(!/[\u2013\u2014]/.test(REJECTION_MESSAGES.explain_limit))
+})
+test('penjelasan biasa diterima dan awalannya dibuang', () => {
+  const r = extractExplanation('PENJELASAN: Baris ini menghitung total tiap sales.\nLalu hasilnya ditulis di kolom D.')
+  assert.ok(r.ok && r.text.startsWith('Baris ini') && !r.text.includes('PENJELASAN'))
+})
+test('penjelasan boleh mengutip satu atau dua baris kode pendek', () => {
+  const r = extractExplanation('PENJELASAN: Baris ```vba\nRange("A1").Value = 1\n``` mengisi sel A1.')
+  assert.ok(r.ok)
+})
+test('penjelasan kosong ditolak', () => {
+  assert.deepEqual(extractExplanation('PENJELASAN:   '), { ok: false, reason: 'empty' })
+})
+test('penjelasan yang menyelundupkan prosedur VBA lengkap ditolak', () => {
+  const r = extractExplanation('PENJELASAN: ini kodenya\nSub Jahat()\n  MsgBox "x"\nEnd Sub')
+  assert.deepEqual(r, { ok: false, reason: 'not_explanation' })
+})
+test('penjelasan dengan blok kode panjang (lebih dari 12 baris) ditolak', () => {
+  const longBlock = Array.from({ length: 20 }, (_, i) => 'x' + i + ' = ' + i).join('\n')
+  assert.deepEqual(extractExplanation('PENJELASAN: lihat\n```vba\n' + longBlock + '\n```'), { ok: false, reason: 'not_explanation' })
+})
+test('penjelasan terlalu panjang ditolak supaya bukan jalur tanya jawab umum', () => {
+  assert.deepEqual(extractExplanation('PENJELASAN: ' + 'a'.repeat(AI_LIMITS.explainMaxChars + 1)), { ok: false, reason: 'too_long' })
+  assert.ok(extractExplanation('PENJELASAN: ' + 'a'.repeat(AI_LIMITS.explainMaxChars)).ok)
+})
+test('tebakan permintaan penjelasan: pertanyaan murni dikenali', () => {
+  for (const m of ['Jelaskan kode ini', 'apa fungsi baris Dim ws?', 'kenapa pakai For Each', 'maksudnya apa Set ws', 'bagaimana cara kerja loop ini', 'what does this do']) {
+    assert.equal(looksLikeExplainRequest(m), true, m)
+  }
+})
+test('tebakan permintaan penjelasan: permintaan ubah atau campuran TIDAK diblokir', () => {
+  for (const m of ['ubah kolom total jadi kolom E', 'tambahkan komentar yang lebih banyak', 'jelaskan lalu perbaiki errornya', 'kenapa error? tolong fix', 'buatkan versi yang lebih sederhana', 'hapus baris kosong']) {
+    assert.equal(looksLikeExplainRequest(m), false, m)
+  }
+})
+test('prompt chat memuat dua jalur (PERUBAHAN dan PENJELASAN) dan tetap memuat penolakan', () => {
+  const c = buildChatSystem(OK_CODE)
+  assert.ok(c.includes('PERUBAHAN:') && c.includes('PENJELASAN:') && c.includes('TOLAK:'))
+  assert.ok(c.includes('JANGAN tulis ulang seluruh kode'))
 })
 
 console.log(`\n${passed} tes lolos`)

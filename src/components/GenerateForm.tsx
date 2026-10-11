@@ -55,7 +55,7 @@ export type ResumeState = {
   id: string
   prompt: string
   code: string
-  chats: { role: 'user' | 'assistant'; content: string }[]
+  chats: { role: 'user' | 'assistant'; content: string; explain?: boolean }[]
 }
 
 export default function GenerateForm({

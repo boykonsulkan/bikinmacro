@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import GenerateForm from '@/components/GenerateForm'
 import type { ResumeState } from '@/components/GenerateForm'
+import { EXPLAIN_PREFIX } from '@/lib/ai/guard'
 
 export default async function GeneratePage({ searchParams }: { searchParams: Promise<{ g?: string }> }) {
   const supabase = await createClient()
@@ -42,7 +43,15 @@ export default async function GeneratePage({ searchParams }: { searchParams: Pro
         // Detail tambahan dari form disembunyikan, sama seperti saat pertama kali dibuat.
         prompt: String(gen.prompt).split('\n\nDetail tambahan:')[0],
         code: gen.output_vba,
-        chats: (chats ?? []).map((c) => ({ role: c.role as 'user' | 'assistant', content: c.content })),
+        // Jawaban penjelasan diawali penanda di database. Penanda dibuang untuk tampilan dan ditandai terpisah.
+        chats: (chats ?? []).map((c) => {
+          const explain = c.role === 'assistant' && String(c.content).startsWith(EXPLAIN_PREFIX)
+          return {
+            role: c.role as 'user' | 'assistant',
+            content: explain ? String(c.content).slice(EXPLAIN_PREFIX.length).trim() : c.content,
+            ...(explain ? { explain: true } : {}),
+          }
+        }),
       }
     }
   }

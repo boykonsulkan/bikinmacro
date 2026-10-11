@@ -17,6 +17,10 @@ export const AI_LIMITS = {
   requestsPerDay: 100,
   /** Penolakan (di luar topik atau berbahaya) per jam sebelum akun ditahan sementara. */
   rejectionsPerHour: 5,
+  /** Penjelasan kode (tanya arti atau cara kerja) per macro. Setelah ini nggak dijawab lagi. */
+  explainMax: 5,
+  /** Panjang jawaban penjelasan. Dibatasi supaya jalur ini nggak dipakai buat tanya jawab umum. */
+  explainMaxChars: 1500,
 } as const
 
 export type VbaExtract =
@@ -54,6 +58,40 @@ export function extractVba(raw: string): VbaExtract {
 
   if (text.length > AI_LIMITS.codeMaxChars) return { ok: false, reason: 'too_long' }
   return { ok: true, code: text }
+}
+
+/** Awalan jawaban penjelasan dari AI, dan juga penanda di riwayat chat (isi pesan asisten diawali ini). */
+export const EXPLAIN_PREFIX = 'PENJELASAN:'
+
+export type ExplainExtract =
+  | { ok: true; text: string }
+  | { ok: false; reason: 'empty' | 'too_long' | 'not_explanation' }
+
+/**
+ * Ambil teks penjelasan dari balasan AI. Penjelasan nggak boleh berisi kode lengkap (itu jalur revisi yang dipindai),
+ * dan dibatasi panjangnya supaya nggak jadi jalur tanya jawab umum.
+ */
+export function extractExplanation(raw: string): ExplainExtract {
+  const text = (raw ?? '').replace(/\r\n/g, '\n').trim().replace(/^PENJELASAN:\s*/i, '').trim()
+  if (!text) return { ok: false, reason: 'empty' }
+  const hasProcedure = PROC_START.test(text) && /^\s*End\s+(?:Sub|Function)\b/im.test(text)
+  const longFence = [...text.matchAll(/```[a-zA-Z]*\n([\s\S]*?)```/g)].some((m) => m[1].trim().split('\n').length > 12)
+  if (hasProcedure || longFence) return { ok: false, reason: 'not_explanation' }
+  if (text.length > AI_LIMITS.explainMaxChars) return { ok: false, reason: 'too_long' }
+  return { ok: true, text }
+}
+
+const EXPLAIN_WORDS =
+  /\b(?:jelaskan|jelasin|penjelasan|artinya|arti dari|maksud(?:nya)?|apa (?:itu|fungsi|arti)|kenapa|mengapa|cara kerja|gimana kerja|bagaimana kerja|explain|what does)\b/i
+const CHANGE_WORDS = /\b(?:ubah|ganti|tambah(?:kan)?|hapus|buat(?:kan)?|perbaiki|benerin|betulin|revisi|fix|modifikasi|sesuaikan|kurangi|pindah(?:kan)?)\b/i
+
+/**
+ * Tebakan cepat (tanpa AI): apakah pesan ini murni minta penjelasan? Dipakai cuma untuk menolak lebih awal setelah batas
+ * penjelasan habis, jadi pesan campuran ("jelaskan lalu ubah...") dianggap revisi supaya nggak salah blokir.
+ * Penentu akhirnya tetap jenis balasan AI.
+ */
+export function looksLikeExplainRequest(message: string): boolean {
+  return EXPLAIN_WORDS.test(message) && !CHANGE_WORDS.test(message)
 }
 
 /** Hapus komentar VBA (di luar tanda kutip) supaya pemindaian nggak salah baca komentar. */
@@ -129,6 +167,7 @@ export const REJECTION_MESSAGES = {
   not_vba: 'Balasan AI bukan kode macro yang valid, jadi nggak disimpan. Coba tulis permintaan kamu lebih spesifik soal Excel.',
   empty: 'AI nggak memberi jawaban. Coba lagi.',
   too_long: 'Macro yang dihasilkan terlalu panjang. Pecah permintaan kamu jadi bagian yang lebih kecil.',
+  explain_limit: `Batas penjelasan (${AI_LIMITS.explainMax}x) untuk macro ini sudah tercapai. Kalau kodenya masih membingungkan, minta versi yang lebih sederhana atau dengan komentar yang lebih banyak, atau tulis ke kami lewat halaman Bantuan.`,
   unsafe: 'Macro ini butuh perintah yang nggak diizinkan di BikinMacro (menjalankan program lain atau akses internet), jadi nggak dibuat.',
 } as const
 
