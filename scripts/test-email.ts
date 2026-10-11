@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { EMAIL_LIMITS, TEMPLATES } from '../src/lib/email/config'
 import { cleanName, parseRecipients } from '../src/lib/email/recipients'
-import { emailConfig, sendOne } from '../src/lib/email/resend'
+import { checkSenderDomain, emailConfig, sendOne, senderDomain } from '../src/lib/email/resend'
 import { buildCtas, escapeHtml, oneLine, renderEmail } from '../src/lib/email/templates'
 
 let passed = 0
@@ -161,6 +161,39 @@ async function main() {
     const d = await sendOne(msg, {})
     if (old) process.env.RESEND_API_KEY = old
     assert.ok(!d.ok && d.error.includes('RESEND_API_KEY'))
+  })
+  await test('kirim: 403 sandbox BUKAN dilaporkan sebagai API key ditolak (bug yang menyesatkan)', async () => {
+    const mk = (status: number, body: unknown) => (async () => json(status, body)) as unknown as typeof fetch
+    const r = await sendOne(msg, { apiKey: 're_k', fetchImpl: mk(403, { name: 'validation_error', message: 'You can only send testing emails to your own email address (boy@x.com). To send emails to other recipients, please verify a domain at resend.com/domains.' }) })
+    assert.ok(!r.ok && r.error.includes('sandbox') && r.error.includes('email pemilik akun') && r.error.includes('HTTP 403 validation_error'))
+    assert.ok(!r.ok && !r.error.includes('API key Resend ditolak'))
+  })
+  await test('kirim: 403 domain belum diverifikasi dan 403 key terbatas dibedakan dari 401', async () => {
+    const mk = (status: number, body: unknown) => (async () => json(status, body)) as unknown as typeof fetch
+    const a = await sendOne(msg, { apiKey: 're_k', fetchImpl: mk(403, { name: 'validation_error', message: 'The bikinmacro.my.id domain is not verified. Please, add and verify your domain.' }) })
+    assert.ok(!a.ok && a.error.includes('Domain pengirim belum diverifikasi') && a.error.includes('HTTP 403'))
+    const b = await sendOne(msg, { apiKey: 're_k', fetchImpl: mk(403, { name: 'restricted_api_key', message: 'This API key is restricted to sending emails only' }) })
+    assert.ok(!b.ok && b.error.includes('nggak punya izin'))
+    const c = await sendOne(msg, { apiKey: 're_k', fetchImpl: mk(401, { name: 'validation_error', message: 'API key is invalid' }) })
+    assert.ok(!c.ok && c.error.includes('API key Resend ditolak') && c.error.includes('HTTP 401'))
+  })
+  await test('domain pengirim: diambil dari alamat pengirim', () => {
+    assert.equal(senderDomain('BikinMacro <halo@BikinMacro.my.id>'), 'bikinmacro.my.id')
+    assert.equal(senderDomain('halo@x.id'), 'x.id')
+    assert.equal(senderDomain('tanpa-alamat'), null)
+  })
+  await test('cek domain: sandbox, terverifikasi, pending, belum ada, key terbatas, jaringan putus', async () => {
+    const env = { RESEND_API_KEY: 're_k', EMAIL_FROM: 'BikinMacro <halo@bikinmacro.my.id>' }
+    const list = (status: number, data: unknown) => (async () => json(status, data)) as unknown as typeof fetch
+    assert.deepEqual(await checkSenderDomain({ RESEND_API_KEY: 're_k' }), { state: 'sandbox' })
+    assert.deepEqual(await checkSenderDomain(env, list(200, { data: [{ name: 'bikinmacro.my.id', status: 'verified' }] })), { state: 'verified', domain: 'bikinmacro.my.id' })
+    assert.deepEqual(await checkSenderDomain(env, list(200, { data: [{ name: 'bikinmacro.my.id', status: 'pending' }] })), { state: 'pending', domain: 'bikinmacro.my.id' })
+    assert.deepEqual(await checkSenderDomain(env, list(200, { data: [{ name: 'bikinmacro.my.id', status: 'failed' }] })), { state: 'gagal', domain: 'bikinmacro.my.id' })
+    assert.deepEqual(await checkSenderDomain(env, list(200, { data: [{ name: 'lain.com', status: 'verified' }] })), { state: 'tidak_ada', domain: 'bikinmacro.my.id' })
+    const limited = await checkSenderDomain(env, list(401, { name: 'restricted_api_key', message: 'restricted' }))
+    assert.equal(limited.state, 'tidak_bisa_dicek')
+    const down = await checkSenderDomain(env, (async () => { throw new TypeError('fetch failed') }) as unknown as typeof fetch)
+    assert.equal(down.state, 'tidak_bisa_dicek')
   })
   await test('kirim: API key nggak pernah muncul di pesan error', async () => {
     const key = 're_SANGAT_RAHASIA_999'

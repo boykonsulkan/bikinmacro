@@ -47,11 +47,65 @@ type Message = { to: string; subject: string; html: string; text: string }
 function describeError(status: number, body: unknown): string {
   const b = (body ?? {}) as { message?: unknown; name?: unknown }
   const msg = typeof b.message === 'string' ? b.message : ''
-  if (status === 401 || status === 403) return 'API key Resend ditolak. Cek RESEND_API_KEY.'
-  if (status === 429) return 'Kena batas kirim Resend. Coba lagi sebentar.'
-  if (status === 422 && /domain|verif/i.test(msg)) return `Domain pengirim belum diverifikasi di Resend. (${msg.slice(0, 120)})`
-  if (status === 403 && /testing emails|own email/i.test(msg)) return 'Pengirim sandbox cuma bisa kirim ke email pemilik akun Resend. Verifikasi domain dulu.'
-  return (msg || `Resend membalas HTTP ${status}.`).slice(0, 200)
+  // Kode status dan nama error ikut ditampilkan supaya penyebab asli kelihatan di riwayat kirim.
+  const tag = `HTTP ${status}${typeof b.name === 'string' ? ` ${b.name}` : ''}`
+
+  if (status === 429) return `Kena batas kirim Resend. Coba lagi sebentar. (${tag})`
+  // 401 = key nggak valid. 403 BUKAN soal key: Resend memakai 403 untuk pengirim sandbox dan domain yang belum diverifikasi.
+  if (status === 401) return `API key Resend ditolak (nggak valid atau sudah dicabut). Cek RESEND_API_KEY. (${tag})`
+  if (/testing emails|own email address/i.test(msg)) {
+    return `Pengirim sandbox (onboarding@resend.dev) cuma bisa kirim ke email pemilik akun Resend. Verifikasi domain di Resend, lalu isi EMAIL_FROM dengan alamat di domain itu. (${tag})`
+  }
+  if (/domain/i.test(msg) && /verif/i.test(msg)) {
+    return `Domain pengirim belum diverifikasi di Resend. Selesaikan record DNS-nya di dashboard Resend. (${tag})`
+  }
+  if (status === 403 && /restrict|permission|sending access|not allowed/i.test(msg)) {
+    return `API key Resend nggak punya izin untuk domain pengirim ini. Pakai key Full access, atau key yang dibatasi ke domain yang benar. (${tag})`
+  }
+  return `${(msg || 'Resend membalas error.').slice(0, 150)} (${tag})`
+}
+
+export type DomainCheck =
+  | { state: 'sandbox' }
+  | { state: 'verified' | 'pending' | 'gagal'; domain: string }
+  | { state: 'tidak_ada'; domain: string }
+  | { state: 'tidak_bisa_dicek'; detail: string }
+
+/** Domain dari alamat pengirim: "Nama <halo@x.id>" atau "halo@x.id" -> "x.id". */
+export function senderDomain(from: string): string | null {
+  const m = from.match(/@([A-Za-z0-9.-]+.[A-Za-z]{2,})>?s*$/)
+  return m ? m[1].toLowerCase() : null
+}
+
+/**
+ * Cek status verifikasi domain pengirim di Resend (hanya baca). Butuh key dengan izin membaca domain;
+ * key yang cuma "Sending access" nggak bisa mengeceknya, dan itu bukan berarti domainnya bermasalah.
+ */
+export async function checkSenderDomain(
+  env: Record<string, string | undefined> = process.env,
+  fetchImpl: typeof fetch = fetch,
+): Promise<DomainCheck> {
+  const cfg = emailConfig(env)
+  if (cfg.sandbox) return { state: 'sandbox' }
+  const domain = senderDomain(cfg.from)
+  const key = env.RESEND_API_KEY?.trim()
+  if (!domain || !key) return { state: 'tidak_bisa_dicek', detail: 'Alamat pengirim atau key belum lengkap.' }
+  try {
+    const res = await fetchImpl('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(6000),
+    })
+    const json = (await res.json().catch(() => ({}))) as { data?: { name?: string; status?: string }[]; message?: string }
+    if (!res.ok) {
+      return { state: 'tidak_bisa_dicek', detail: res.status === 401 || res.status === 403 ? 'Key ini nggak boleh membaca daftar domain (mungkin Sending access saja).' : `HTTP ${res.status}` }
+    }
+    const found = (json.data ?? []).find((d) => d.name?.toLowerCase() === domain)
+    if (!found) return { state: 'tidak_ada', domain }
+    if (found.status === 'verified') return { state: 'verified', domain }
+    return { state: found.status === 'failed' || found.status === 'temporary_failure' ? 'gagal' : 'pending', domain }
+  } catch {
+    return { state: 'tidak_bisa_dicek', detail: 'Nggak bisa menghubungi Resend.' }
+  }
 }
 
 export async function sendOne(msg: Message, opts: SendOptions = {}): Promise<SendResult> {

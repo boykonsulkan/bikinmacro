@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { emailConfig } from '@/lib/email/resend'
+import { checkSenderDomain, emailConfig } from '@/lib/email/resend'
 import { EMAIL_LIMITS } from '@/lib/email/config'
 import { getAdminUser, serviceClient } from '@/lib/orders/server'
 import { formatDateTime } from '@/components/pesan/format'
@@ -11,6 +11,7 @@ export default async function AdminEmailPage() {
   if (!(await getAdminUser())) redirect('/north/login')
 
   const cfg = emailConfig()
+  const domain = cfg.configured ? await checkSenderDomain() : null
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || 'https://bikinmacro.my.id').replace(/\/+$/, '')
 
   const db = serviceClient()
@@ -41,6 +42,27 @@ export default async function AdminEmailPage() {
         <p className="rounded-lg border border-border bg-card p-4 text-sm font-medium text-muted">
           Balasan penerima sementara masuk ke {cfg.replyTo} (bawaan di kode). Untuk menggantinya, isi EMAIL_REPLY_TO di environment
           lalu deploy ulang.
+        </p>
+      )}
+
+      {domain?.state === 'verified' && (
+        <p className="rounded-lg border border-border bg-card p-4 text-sm font-medium text-accent-ink">
+          Domain pengirim {domain.domain} sudah terverifikasi di Resend. Email bisa dikirim ke siapa saja.
+        </p>
+      )}
+      {domain && (domain.state === 'pending' || domain.state === 'gagal' || domain.state === 'tidak_ada') && (
+        <p className="rounded-lg border border-warning-border bg-warning-bg p-4 text-sm font-semibold text-warning-ink">
+          {domain.state === 'tidak_ada'
+            ? `Domain ${domain.domain} belum ditambahkan di Resend (Domains, Add Domain).`
+            : domain.state === 'pending'
+              ? `Domain ${domain.domain} belum terverifikasi di Resend. Pastikan record DNS-nya sudah ditambahkan, lalu klik Verify di dashboard Resend.`
+              : `Verifikasi domain ${domain.domain} di Resend gagal. Cek lagi record DNS-nya.`}{' '}
+          Selama belum terverifikasi, pengiriman ke orang lain akan gagal.
+        </p>
+      )}
+      {domain?.state === 'tidak_bisa_dicek' && (
+        <p className="rounded-lg border border-border bg-card p-4 text-sm font-medium text-muted">
+          Status domain pengirim nggak bisa dicek otomatis ({domain.detail}). Cek manual di dashboard Resend, bagian Domains.
         </p>
       )}
 
