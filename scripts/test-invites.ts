@@ -6,6 +6,7 @@ import {
   inviteState,
   isInvitePlan,
   maskEmail,
+  shouldSetPassword,
   shouldUpgrade,
   validatePassword,
 } from '../src/lib/invites/rules'
@@ -67,6 +68,12 @@ test('shouldUpgrade: hanya menaikkan, nggak pernah menurunkan, admin nggak disen
   assert.equal(shouldUpgrade('starter', 'user', 'addon'), false)
   assert.equal(shouldUpgrade('free', 'admin', 'pro'), false)
   assert.equal(shouldUpgrade('free', 'user', 'tidak-ada'), false)
+})
+test('shouldSetPassword: akun biasa boleh diatur ulang lewat undangan, admin TIDAK', () => {
+  assert.equal(shouldSetPassword('user'), true)
+  assert.equal(shouldSetPassword(null), true)
+  assert.equal(shouldSetPassword(undefined), true)
+  assert.equal(shouldSetPassword('admin'), false)
 })
 test('isInvitePlan hanya menerima paket yang diizinkan', () => {
   for (const p of INVITE.plans) assert.ok(isInvitePlan(p))

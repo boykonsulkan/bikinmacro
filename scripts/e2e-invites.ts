@@ -43,7 +43,7 @@ const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_
 const anon = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false } })
 
 const stamp = Date.now()
-const emails = { fresh: `beta-e2e-${stamp}@example.com`, existing: `beta-e2e-ada-${stamp}@example.com`, expired: `beta-e2e-exp-${stamp}@example.com` }
+const emails: Record<string, string> = { fresh: `beta-e2e-${stamp}@example.com`, existing: `beta-e2e-ada-${stamp}@example.com`, expired: `beta-e2e-exp-${stamp}@example.com` }
 const createdUserIds: string[] = []
 let passed = 0
 
@@ -147,7 +147,7 @@ async function main() {
     if (users?.[0]) createdUserIds.push(users[0].id as string)
   })
 
-  await step('email yang sudah punya akun: paket naik, password lama nggak berubah, nggak pernah turun', async () => {
+  await step('email yang sudah punya akun (lupa password): paket naik tapi nggak pernah turun, password DIATUR ULANG, bisa login', async () => {
     const { data: u } = await db.from('users').select('id').ilike('email', emails.existing).single()
     const uid = u!.id as string
     await db.from('users').update({ plan: 'pro', credits_limit: 999 }).eq('id', uid)
@@ -156,13 +156,37 @@ async function main() {
     if (!r.ok) return
     const info = await inv.lookupInvite(tokenOf(r.invite.url))
     assert.equal(info.existing, true)
-    const act = await inv.activateInvite(tokenOf(r.invite.url), 'password-lain-yang-nggak-dipakai')
-    assert.ok(act.ok && act.existing)
+    assert.equal(info.existingAdmin, false)
+    const NEW_PASSWORD = 'Password-Baru-Setelah-Lupa-9!'
+    const act = await inv.activateInvite(tokenOf(r.invite.url), NEW_PASSWORD)
+    assert.ok(act.ok && act.existing && act.passwordSet, JSON.stringify(act))
     const { data: after } = await db.from('users').select('plan, credits_limit').eq('id', uid).single()
     assert.equal(after?.plan, 'pro', 'pelanggan Pro nggak boleh turun jadi starter')
     assert.equal(after?.credits_limit, 999)
-    const login = await anon.auth.signInWithPassword({ email: emails.existing, password: PASSWORD })
-    assert.ok(!login.error, 'password lama harus tetap berlaku')
+    const newLogin = await anon.auth.signInWithPassword({ email: emails.existing, password: NEW_PASSWORD })
+    assert.ok(!newLogin.error && newLogin.data.session, 'password baru harus bisa dipakai login: ' + newLogin.error?.message)
+    const oldLogin = await anon.auth.signInWithPassword({ email: emails.existing, password: PASSWORD })
+    assert.ok(oldLogin.error, 'password lama harus sudah nggak berlaku')
+  })
+
+  await step('akun yang lupa password dan masih free: naik ke starter dan langsung bisa login (kasus pancadwi.boy)', async () => {
+    const email = `beta-e2e-lupa-${stamp}@example.com`
+    emails.lupa = email
+    const created = await db.auth.admin.createUser({ email, password: 'password-lama-yang-terlupa', email_confirm: true })
+    assert.ok(created.data.user)
+    createdUserIds.push(created.data.user!.id)
+    await db.from('users').update({ plan: 'free', credits_used: 3, credits_limit: 3 }).eq('id', created.data.user!.id)
+    const r = await inv.createInvite(email, 'starter', adminId)
+    assert.ok(r.ok)
+    if (!r.ok) return
+    const act = await inv.activateInvite(tokenOf(r.invite.url), 'Password-Segar-Setelah-Aktivasi-1')
+    assert.ok(act.ok && act.existing && act.passwordSet)
+    const { data: after } = await db.from('users').select('plan, credits_limit, credits_used').eq('id', created.data.user!.id).single()
+    assert.equal(after?.plan, 'starter')
+    assert.equal(after?.credits_limit, starterCredits)
+    assert.equal(after?.credits_used, 3, 'pemakaian lama dipertahankan (sisa kredit = limit dikurangi pemakaian)')
+    const login = await anon.auth.signInWithPassword({ email, password: 'Password-Segar-Setelah-Aktivasi-1' })
+    assert.ok(!login.error && login.data.session, login.error?.message)
   })
 
   await step('undangan baru untuk email yang sama mencabut yang lama', async () => {

@@ -1,6 +1,6 @@
 import 'server-only'
 import { hashToken, newToken, serviceClient } from '@/lib/orders/server'
-import { INVITE, inviteState, shouldUpgrade } from './rules'
+import { INVITE, inviteState, shouldSetPassword, shouldUpgrade } from './rules'
 import type { InvitePlan, InviteState } from './rules'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -42,7 +42,14 @@ export async function revokeInviteById(id: string) {
   await serviceClient().from('beta_invites').update({ status: 'revoked' }).eq('id', id).eq('status', 'pending')
 }
 
-export type InviteInfo = { state: InviteState; email?: string; plan?: string; existing?: boolean }
+export type InviteInfo = {
+  state: InviteState
+  email?: string
+  plan?: string
+  existing?: boolean
+  /** Akun yang sudah ada berstatus admin: password-nya nggak akan diubah lewat undangan. */
+  existingAdmin?: boolean
+}
 
 /** Cek undangan TANPA memakainya (dipakai halaman aktivasi untuk menampilkan form). */
 export async function lookupInvite(token: string): Promise<InviteInfo> {
@@ -56,10 +63,10 @@ export async function lookupInvite(token: string): Promise<InviteInfo> {
   if (state !== 'ok' || !data) return { state }
   const { data: user } = await serviceClient()
     .from('users')
-    .select('id')
+    .select('id, role')
     .ilike('email', (data.email as string).replace(/[\\%_]/g, '\\$&'))
     .maybeSingle()
-  return { state, email: data.email as string, plan: data.plan as string, existing: !!user }
+  return { state, email: data.email as string, plan: data.plan as string, existing: !!user, existingAdmin: user?.role === 'admin' }
 }
 
 async function grantPlan(userId: string, plan: string) {
@@ -74,13 +81,14 @@ async function grantPlan(userId: string, plan: string) {
 }
 
 export type ActivateResult =
-  | { ok: true; email: string; existing: boolean }
+  | { ok: true; email: string; existing: boolean; /** True kalau password akun diatur lewat aktivasi ini. */ passwordSet: boolean }
   | { ok: false; error: string; state?: InviteState }
 
 /**
  * Aktivasi: validasi token, "klaim" undangan (sekali pakai, aman dari klik ganda), buat akun dengan password pilihan
  * pengguna (email langsung terkonfirmasi, karena link membuktikan mereka pemilik email), lalu beri paket.
- * Kalau email sudah punya akun: paket dinaikkan (nggak pernah diturunkan, admin nggak disentuh) tanpa mengubah password.
+ * Kalau email sudah punya akun: paket dinaikkan (nggak pernah diturunkan) dan password diatur ulang ke pilihan pengguna
+ * (link ini membuktikan mereka pemilik email, seperti link reset password). Akun admin nggak disentuh sama sekali.
  */
 export async function activateInvite(token: string, password: string): Promise<ActivateResult> {
   if (!token || token.length > 200) return { ok: false, error: 'Link aktivasi nggak valid.', state: 'invalid' }
@@ -117,6 +125,17 @@ export async function activateInvite(token: string, password: string): Promise<A
     .maybeSingle()
 
   if (existing) {
+    // Link undangan membuktikan penerimanya pemilik email (seperti link reset password), jadi password akun biasa
+    // diatur ulang ke pilihannya. Akun admin nggak disentuh. Password diatur DULU: kalau gagal, paket belum berubah.
+    const setPassword = shouldSetPassword(existing.role as string)
+    if (setPassword) {
+      const { error: pwError } = await db.auth.admin.updateUserById(existing.id as string, { password, email_confirm: true })
+      if (pwError) {
+        await release()
+        console.error('invite updateUserById failed', pwError.message)
+        return { ok: false, error: 'Password belum bisa diatur. Coba lagi sebentar.' }
+      }
+    }
     if (shouldUpgrade(existing.plan as string, existing.role as string, plan)) {
       if (!(await grantPlan(existing.id as string, plan))) {
         await release()
@@ -124,7 +143,7 @@ export async function activateInvite(token: string, password: string): Promise<A
       }
     }
     await db.from('beta_invites').update({ activated_user_id: existing.id }).eq('id', inv.id)
-    return { ok: true, email, existing: true }
+    return { ok: true, email, existing: true, passwordSet: setPassword }
   }
 
   const { data: created, error } = await db.auth.admin.createUser({ email, password, email_confirm: true })
@@ -145,5 +164,5 @@ export async function activateInvite(token: string, password: string): Promise<A
     return { ok: false, error: 'Paket belum bisa diaktifkan. Coba lagi sebentar.' }
   }
   await db.from('beta_invites').update({ activated_user_id: userId }).eq('id', inv.id)
-  return { ok: true, email, existing: false }
+  return { ok: true, email, existing: false, passwordSet: true }
 }

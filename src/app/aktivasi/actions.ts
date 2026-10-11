@@ -7,13 +7,27 @@ import { PLAN_LABEL, STATE_MESSAGE, maskEmail, validatePassword } from '@/lib/in
 import type { InviteState } from '@/lib/invites/rules'
 import { createClient } from '@/utils/supabase/server'
 
-export type InviteView = { state: InviteState; maskedEmail?: string; planLabel?: string; existing?: boolean }
+export type InviteView = {
+  state: InviteState
+  maskedEmail?: string
+  planLabel?: string
+  /** Email ini sudah punya akun (password akan diatur ulang lewat aktivasi, kecuali akun admin). */
+  existing?: boolean
+  /** Akun admin: nggak ada password yang diminta atau diubah. */
+  existingAdmin?: boolean
+}
 
 /** Cek undangan tanpa memakainya, untuk menampilkan form (email disamarkan). */
 export async function checkInvite(token: string): Promise<InviteView> {
   const info = await lookupInvite(token)
   if (info.state !== 'ok' || !info.email) return { state: info.state }
-  return { state: 'ok', maskedEmail: maskEmail(info.email), planLabel: PLAN_LABEL[info.plan ?? ''] ?? info.plan, existing: info.existing }
+  return {
+    state: 'ok',
+    maskedEmail: maskEmail(info.email),
+    planLabel: PLAN_LABEL[info.plan ?? ''] ?? info.plan,
+    existing: info.existing,
+    existingAdmin: info.existingAdmin,
+  }
 }
 
 export type ActivateState = { status: 'idle' | 'error'; message: string }
@@ -32,8 +46,9 @@ export async function activateAction(_prev: ActivateState, formData: FormData): 
     return { status: 'error', message: STATE_MESSAGE[info.state === 'ok' ? 'invalid' : info.state] }
   }
 
-  // Email yang sudah punya akun nggak perlu password baru: paketnya saja yang dinaikkan.
-  if (!info.existing) {
+  // Semua akun membuat password baru lewat aktivasi (akun baru, atau akun lama yang lupa password-nya).
+  // Pengecualian: akun admin nggak disentuh, jadi nggak ada password yang diminta.
+  if (!info.existingAdmin) {
     const passwordError = validatePassword(password, confirm, info.email)
     if (passwordError) return { status: 'error', message: passwordError }
   }
@@ -44,8 +59,9 @@ export async function activateAction(_prev: ActivateState, formData: FormData): 
   }
 
   // redirect() melempar, jadi harus di luar try/catch.
-  if (result.existing) {
-    redirect('/auth/login?message=' + encodeURIComponent('Paket beta sudah aktif di akunmu. Silakan masuk dengan password kamu.'))
+  if (!result.passwordSet) {
+    // Akun admin: paket diproses tapi password nggak diubah, jadi masuk seperti biasa.
+    redirect('/auth/login?message=' + encodeURIComponent('Undangan diproses. Akun ini akun admin, jadi password-nya nggak diubah. Silakan masuk seperti biasa.'))
   }
 
   const supabase = await createClient()

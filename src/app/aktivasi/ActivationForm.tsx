@@ -71,14 +71,16 @@ export default function ActivationForm() {
       <p className="mt-3 text-sm font-medium leading-relaxed text-muted">
         Akun untuk <span className="font-mono font-bold text-card-foreground">{view?.maskedEmail}</span> dengan paket{' '}
         <span className="font-bold text-card-foreground">{view?.planLabel}</span>.{' '}
-        {view?.existing
-          ? 'Email ini sudah punya akun. Klik Aktifkan untuk menambahkan paket beta, lalu masuk dengan password kamu seperti biasa.'
-          : 'Cukup buat password, lalu kamu langsung bisa mencoba. Password ini yang kamu pakai untuk masuk lagi kapan saja.'}
+        {view?.existingAdmin
+          ? 'Ini akun admin: password-nya nggak diubah lewat undangan. Klik Aktifkan, lalu masuk seperti biasa.'
+          : view?.existing
+            ? 'Email ini sudah punya akun BikinMacro. Buat password baru di bawah (password lama kalau ada akan diganti, jadi kamu juga nggak perlu mengingatnya). Setelah itu kamu langsung masuk dengan paket beta.'
+            : 'Cukup buat password, lalu kamu langsung bisa mencoba. Password ini yang kamu pakai untuk masuk lagi kapan saja.'}
       </p>
 
       <input type="hidden" name="token" value={token} />
 
-      {!view?.existing && (
+      {!view?.existingAdmin && (
         <>
       <div className="mt-6 flex flex-col gap-2">
         <label htmlFor="password" className="text-sm font-bold text-foreground">Buat password</label>

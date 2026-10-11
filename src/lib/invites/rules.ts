@@ -24,6 +24,14 @@ export function shouldUpgrade(currentPlan: string | null | undefined, role: stri
   return (PLAN_RANK[newPlan] ?? 0) > (PLAN_RANK[currentPlan ?? 'free'] ?? 0)
 }
 
+/**
+ * Apakah aktivasi boleh mengatur password? Link undangan membuktikan penerimanya pemilik email (seperti link reset password),
+ * jadi akun biasa boleh. Akun admin TIDAK: password admin nggak boleh diubah lewat link yang dikirim.
+ */
+export function shouldSetPassword(role: string | null | undefined): boolean {
+  return role !== 'admin'
+}
+
 export function validatePassword(password: unknown, confirm: unknown, email?: string): string | null {
   if (typeof password !== 'string' || password.length < INVITE.passwordMin) {
     return `Password minimal ${INVITE.passwordMin} karakter.`

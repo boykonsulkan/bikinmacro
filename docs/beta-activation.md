@@ -21,8 +21,8 @@ langsung jadi dengan paket beta yang aktif. Mereka bisa masuk lagi kapan pun den
 | Aktivasi | Baru terjadi saat tombol diklik (bukan saat link dibuka) | Pemindai email (misalnya Outlook SafeLinks) membuka semua link dan akan menghanguskan undangan |
 | Sekali pakai | Undangan "diklaim" secara atomik sebelum akun dibuat | Klik ganda atau dua tab nggak membuat dua akun |
 | Password | Dipilih penerima saat aktivasi (8 sampai 72 karakter) | Login BikinMacro berbasis password. Tanpa ini mereka nggak bisa masuk lagi |
-| Email sudah punya akun | Paket dinaikkan, password lama nggak berubah | Link membuktikan mereka pemilik email |
-| Menaikkan saja | Paket **nggak pernah diturunkan**, akun admin nggak disentuh | Pelanggan Pro yang diundang sebagai Starter tetap Pro |
+| Email sudah punya akun | Paket dinaikkan, **password diatur ulang** ke pilihan pengguna dan langsung masuk | Link membuktikan mereka pemilik email (seperti link reset password). Aplikasi belum punya fitur "lupa password", jadi tanpa ini orang yang lupa password buntu. Akun **admin** nggak disentuh (password nggak diubah) |
+| Menaikkan saja | Paket **nggak pernah diturunkan**, akun admin nggak disentuh sama sekali | Pelanggan Pro yang diundang sebagai Starter tetap Pro |
 | Undangan baru | Mencabut undangan lama yang masih menunggu untuk email yang sama | Hanya ada satu link aktif per orang |
 
 ## Setup
@@ -38,7 +38,7 @@ untuk yang masih menunggu.
 ## Tes
 
 ```
-npx tsx scripts/test-invites.ts          # aturan murni (10 tes), tanpa jaringan
+npx tsx scripts/test-invites.ts          # aturan murni (11 tes), tanpa jaringan
 npx tsx scripts/test-email.ts            # termasuk tombol aktivasi (22 tes)
 npx tsx scripts/e2e-invites.ts --confirm # alur nyata ke Supabase: buat, aktivasi, login, klik ganda, kedaluwarsa, cabut
 ```
