@@ -7,6 +7,7 @@ import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRi
 import { codeToHtml } from 'shiki'
 import MacroChat from './MacroChat'
 import UsageGuide from './UsageGuide'
+import { track } from '@/lib/events/client'
 
 const CATEGORIES = [
   'Data Processing',
@@ -98,6 +99,11 @@ export default function GenerateForm({
     }
   }, [resume])
 
+  useEffect(() => {
+    if (!resume) track('generate_view')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Simpan id generasi di URL supaya refresh kembali ke chat yang sama (tanpa memuat ulang halaman).
   const rememberGeneration = (id: string | null) => {
     window.history.replaceState(null, '', id ? `/generate?g=${encodeURIComponent(id)}` : '/generate')
@@ -110,12 +116,14 @@ export default function GenerateForm({
       return
     }
     setError('')
+    track('questions_step')
     setViewMode('questions')
   }
 
   const handleGenerate = async () => {
     setIsLoading(true)
     setError('')
+    track('generate_submit')
 
     const extras = QUESTIONS
       .filter(q => answers[q.id]?.trim())
@@ -166,6 +174,7 @@ export default function GenerateForm({
   }
 
   const copyToClipboard = () => {
+    track('copy_code')
     navigator.clipboard.writeText(outputRaw)
     setIsCopied(true)
     setTimeout(() => setIsCopied(false), 2000)
@@ -182,6 +191,7 @@ export default function GenerateForm({
   }
 
   const downloadBas = () => {
+    track('download_bas')
     setMenuOpen(false)
     setExportError('')
     saveBlob(new Blob([outputRaw], { type: 'text/plain' }), 'macro.bas')

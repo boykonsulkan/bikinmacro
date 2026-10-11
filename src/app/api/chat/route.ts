@@ -6,6 +6,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba, trimHistory } from '@/lib/ai/guard'
 import { buildChatSystem, buildChatUser } from '@/lib/ai/prompts'
+import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection } from '@/lib/ai/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
@@ -192,6 +193,7 @@ export async function POST(req: Request) {
 
     // Update generation with latest code
     await supabase.from('generations').update({ output_vba: vbaCode }).eq('id', generation_id)
+    await trackEvent(user.id, 'chat_success', { n: (chatCount ?? 0) + 1 })
 
     return NextResponse.json({
       vba_code: vbaCode,

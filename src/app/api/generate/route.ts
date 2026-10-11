@@ -6,6 +6,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba } from '@/lib/ai/guard'
 import { buildGenerateSystem, buildGenerateUser } from '@/lib/ai/prompts'
+import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection } from '@/lib/ai/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
@@ -42,6 +43,7 @@ function getFallbackProvider(): string {
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now()
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -157,6 +159,8 @@ export async function POST(req: Request) {
       .insert({ user_id: user.id, prompt, category, output_vba: vbaCode })
       .select('id')
       .single()
+
+    await trackEvent(user.id, 'generate_success', { category: String(category ?? ''), prompt_len: String(prompt).length, ms: Date.now() - startedAt })
 
     // Calculate max chats based on plan settings
     const maxChat = settings?.max_chat_per_generation ?? 10

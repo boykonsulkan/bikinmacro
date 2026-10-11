@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Eye, Copy, X } from 'lucide-react'
+import Link from 'next/link'
+import { Eye, Copy, X, MessageSquare } from 'lucide-react'
+import { track } from '@/lib/events/client'
 
 type Generation = {
   id: string
@@ -60,6 +62,13 @@ export default function HistoryList({ generations }: { generations: Generation[]
                 </p>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                <Link
+                  href={`/generate?g=${gen.id}`}
+                  onClick={() => track('history_resume')}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-foreground hover:opacity-90 text-background px-3 py-2 rounded-lg text-sm font-medium transition-opacity"
+                >
+                  <MessageSquare size={16} /> Lanjut chat
+                </Link>
                 <button 
                   onClick={() => setSelectedMacro(gen)}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-background hover:bg-border border border-border px-3 py-2 rounded-lg text-sm font-medium transition-colors"

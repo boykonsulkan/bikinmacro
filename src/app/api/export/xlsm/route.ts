@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { AI_LIMITS, REJECTION_MESSAGES, scanVba } from '@/lib/ai/guard'
 import { buildXlsm } from '@/lib/xlsm/build'
+import { trackEvent } from '@/lib/events/server'
 
 // Butuh Buffer dan pustaka biner, jadi harus runtime Node (bukan edge).
 export const runtime = 'nodejs'
@@ -29,14 +30,17 @@ export async function GET(req: Request) {
 
   const code: string = generation.output_vba
   if (code.length > AI_LIMITS.codeMaxChars) {
+    await trackEvent(user.id, 'download_xlsm_failed', { reason: 'too_long' })
     return NextResponse.json({ error: REJECTION_MESSAGES.too_long }, { status: 422 })
   }
   if (scanVba(code).blocked.length > 0) {
+    await trackEvent(user.id, 'download_xlsm_failed', { reason: 'unsafe' })
     return NextResponse.json({ error: REJECTION_MESSAGES.unsafe }, { status: 422 })
   }
 
   try {
     const file = buildXlsm(code)
+    await trackEvent(user.id, 'download_xlsm', { bytes: file.length })
     return new NextResponse(Buffer.from(file), {
       headers: {
         'Content-Type': 'application/vnd.ms-excel.sheet.macroEnabled.12',
@@ -46,6 +50,7 @@ export async function GET(req: Request) {
     })
   } catch (error) {
     console.error('Export xlsm gagal:', error)
+    await trackEvent(user.id, 'download_xlsm_failed', { reason: 'error' })
     return NextResponse.json({ error: 'Gagal membuat file Excel. Unduh versi .bas sebagai gantinya.' }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
+import { track } from '@/lib/events/client'
 
 const TABS = [
   {
@@ -52,7 +53,10 @@ export default function UsageGuide() {
             key={t.id}
             role="tab"
             aria-selected={active === t.id}
-            onClick={() => setActive(t.id)}
+            onClick={() => {
+              setActive(t.id)
+              track('guide_tab', { tab: t.id })
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-2 ${
               active === t.id
                 ? 'bg-gray-900 text-white border-gray-900'
