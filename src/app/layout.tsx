@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LayoutShell from "@/components/LayoutShell";
@@ -16,10 +17,16 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-const playfair = Playfair_Display({
+// Playfair di-self-host (src/app/fonts). Versi next/font/google dengan weight ["700","800"] membuat
+// build Vercel (Turbopack) gagal acak: Google memberi satu file yang sama untuk kedua bobot, dan loader
+// menolak URL ganda ("next/font/google queries have exactly one entry"). Berkas ini variable font 400-900.
+const playfair = localFont({
+  src: "./fonts/playfair-display-latin.woff2",
   variable: "--font-playfair",
-  subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: "400 900",
+  style: "normal",
+  display: "swap",
+  fallback: ["Georgia", "Times New Roman", "serif"],
 });
 
 const SITE_TITLE = "BikinMacro: File Excel otomatis, sekali klik";
