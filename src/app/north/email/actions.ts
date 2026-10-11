@@ -7,7 +7,9 @@ import type { TemplateKey } from '@/lib/email/config'
 import { parseRecipients } from '@/lib/email/recipients'
 import { emailConfig, sendOne } from '@/lib/email/resend'
 import { buildCtas, oneLine, renderEmail } from '@/lib/email/templates'
-import { getAdminUser, serviceClient } from '@/lib/orders/server'
+import { INVITE, isInvitePlan } from '@/lib/invites/rules'
+import { createInvite, revokeInviteById } from '@/lib/invites/server'
+import { getAdminUser, serviceClient, tableExists } from '@/lib/orders/server'
 
 export type SendResultRow = { email: string; ok: boolean; note?: string }
 export type SendState = { status: 'idle' | 'ok' | 'error'; message: string; results: SendResultRow[] }
@@ -30,7 +32,13 @@ export async function sendEmailAction(_prev: SendState, formData: FormData): Pro
   const template = (TEMPLATE_KEYS as string[]).includes(templateRaw) ? (templateRaw as TemplateKey) : 'free'
   const subject = oneLine(String(formData.get('subject') ?? ''))
   const body = String(formData.get('body') ?? '').trim()
-  const ctas = buildCtas({ coba: formData.get('cta_coba') === 'on', daftar: formData.get('cta_daftar') === 'on' }, siteUrl())
+  const ctaFlags = {
+    coba: formData.get('cta_coba') === 'on',
+    daftar: formData.get('cta_daftar') === 'on',
+    aktivasi: formData.get('cta_aktivasi') === 'on',
+  }
+  const planRaw = formData.get('invite_plan')
+  const invitePlan = isInvitePlan(planRaw) ? planRaw : INVITE.defaultPlan
 
   if (!subject) return fail('Subjek belum diisi.')
   if (subject.length > EMAIL_LIMITS.subjectMax) return fail(`Subjek maksimal ${EMAIL_LIMITS.subjectMax} karakter.`)
@@ -56,8 +64,11 @@ export async function sendEmailAction(_prev: SendState, formData: FormData): Pro
   const db = serviceClient()
 
   // Tabel log harus ada: nggak mau mengirim email yang nggak tercatat.
-  const { error: tableError } = await db.from('email_logs').select('id', { head: true, count: 'exact' }).limit(1)
-  if (tableError) return fail('Tabel email_logs belum ada. Jalankan scripts/email_schema.sql di Supabase dulu.')
+  if (!(await tableExists(db, 'email_logs'))) return fail('Tabel email_logs belum ada. Jalankan scripts/email_schema.sql di Supabase dulu.')
+
+  if (ctaFlags.aktivasi) {
+    if (!(await tableExists(db, 'beta_invites'))) return fail('Tabel beta_invites belum ada. Jalankan scripts/beta_invites_schema.sql di Supabase dulu.')
+  }
 
 
   if (mode === 'send') {
@@ -86,19 +97,29 @@ export async function sendEmailAction(_prev: SendState, formData: FormData): Pro
   const results: SendResultRow[] = []
   for (let i = 0; i < recipients.length; i++) {
     const r = recipients[i]
-    const rendered = renderEmail({
-      subject,
-      body,
-      recipient: r,
-      ctas,
-    })
+    const finalSubject = renderEmail({ subject, body, recipient: r }).subject
 
-    if (already.has(`${r.email}|${rendered.subject}`)) {
+    if (already.has(`${r.email}|${finalSubject}`)) {
       results.push({ email: r.email, ok: false, note: 'Dilewati: baru saja dikirim.' })
       continue
     }
 
+    // Undangan unik per penerima (link aktivasi). Dibuat sebelum kirim, dicabut kalau pengiriman gagal.
+    let inviteId: string | null = null
+    let activationUrl: string | undefined
+    if (ctaFlags.aktivasi) {
+      const inv = await createInvite(r.email, invitePlan, admin.id)
+      if (!inv.ok) {
+        results.push({ email: r.email, ok: false, note: inv.error })
+        continue
+      }
+      inviteId = inv.id
+      activationUrl = inv.invite.url
+    }
+
+    const rendered = renderEmail({ subject, body, recipient: r, ctas: buildCtas(ctaFlags, siteUrl(), activationUrl) })
     const sent = await sendOne({ to: r.email, subject: rendered.subject, html: rendered.html, text: rendered.text }, { idempotencyKey: randomUUID() })
+    if (!sent.ok && inviteId) await revokeInviteById(inviteId)
     await db.from('email_logs').insert({
       to_email: r.email,
       subject: rendered.subject,

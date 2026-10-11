@@ -3,6 +3,7 @@
 // Pakai:  npx tsx scripts/test-email.ts
 import assert from 'node:assert/strict'
 import { EMAIL_LIMITS, TEMPLATES } from '../src/lib/email/config'
+import { INVITE } from '../src/lib/invites/rules'
 import { cleanName, parseRecipients } from '../src/lib/email/recipients'
 import { checkSenderDomain, emailConfig, sendOne, senderDomain } from '../src/lib/email/resend'
 import { buildCtas, escapeHtml, oneLine, renderEmail } from '../src/lib/email/templates'
@@ -87,10 +88,37 @@ async function main() {
     assert.ok(r.text.includes('Daftar sebagai beta tester: https://bikinmacro.my.id/auth/register'))
     assert.ok(!renderEmail({ subject: 's', body: 'isi email yang cukup panjang', recipient: { email: 'a@b.co', name: '' } }).html.includes('<a href'))
   })
-  await test('undangan beta menyebut demo tanpa daftar dan syarat Excel Windows', () => {
+  await test('undangan beta: aktivasi dan coba menyala, daftar mati, teks sinkron dengan masa berlaku', () => {
     const b = TEMPLATES.beta_invite
-    assert.ok(b.ctas.coba && b.ctas.daftar)
-    assert.ok(/nggak perlu daftar/i.test(b.body) && /Windows/.test(b.body))
+    assert.ok(b.ctas.coba && b.ctas.aktivasi && !b.ctas.daftar)
+    assert.ok(/Aktifkan akun beta/.test(b.body) && /nggak perlu daftar/i.test(b.body) && /Windows/.test(b.body))
+    assert.ok(b.body.includes(`${INVITE.ttlDays} hari`), 'teks harus menyebut masa berlaku yang sama dengan INVITE.ttlDays')
+    assert.ok(!TEMPLATES.free.ctas.aktivasi)
+  })
+  await test('tombol aktivasi: jadi utama, coba dan daftar jadi kedua; tanpa URL aktivasi nggak muncul', () => {
+    const url = 'https://bikinmacro.my.id/aktivasi#abc_DEF-123'
+    const all = buildCtas({ coba: true, daftar: true, aktivasi: true }, 'https://bikinmacro.my.id', url)
+    assert.deepEqual(all.map((c) => [c.label, c.style]), [
+      ['Aktifkan akun beta', 'primary'],
+      ['Coba contoh dulu', 'secondary'],
+      ['Daftar sebagai beta tester', 'secondary'],
+    ])
+    assert.equal(all[0].url, url)
+    assert.deepEqual(buildCtas({ coba: true, daftar: false, aktivasi: true }, 'https://x.id').map((c) => c.label), ['Coba contoh dulu'])
+    assert.equal(buildCtas({ coba: false, daftar: false, aktivasi: true }, 'https://x.id', url).length, 1)
+  })
+  await test('link aktivasi dengan # lolos utuh ke HTML dan teks, dan di-escape', () => {
+    const url = 'https://bikinmacro.my.id/aktivasi#tok_en-1'
+    const r = renderEmail({
+      subject: 's',
+      body: 'isi email yang cukup panjang',
+      recipient: { email: 'a@b.co', name: 'Budi' },
+      ctas: buildCtas({ coba: false, daftar: false, aktivasi: true }, 'https://bikinmacro.my.id', url),
+    })
+    assert.ok(r.html.includes(`href="${url}"`))
+    assert.ok(r.text.includes(`Aktifkan akun beta: ${url}`))
+    const evil = renderEmail({ subject: 's', body: 'isi email yang cukup panjang', recipient: { email: 'a@b.co', name: '' }, ctas: [{ label: '<b>x</b>', url: 'https://x.id/?a="1"&b=2' }] })
+    assert.ok(evil.html.includes('&lt;b&gt;x&lt;/b&gt;') && evil.html.includes('?a=&quot;1&quot;&amp;b=2'))
   })
   await test('template bawaan nggak memakai em dash atau en dash', () => {
     for (const t of Object.values(TEMPLATES)) assert.ok(!/[–—]/.test(t.subject + t.body))

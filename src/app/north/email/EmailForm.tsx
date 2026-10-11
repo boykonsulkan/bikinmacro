@@ -6,6 +6,7 @@ import { EMAIL_LIMITS, TEMPLATES, TEMPLATE_KEYS } from '@/lib/email/config'
 import type { TemplateKey } from '@/lib/email/config'
 import { parseRecipients } from '@/lib/email/recipients'
 import { buildCtas, renderEmail } from '@/lib/email/templates'
+import { INVITE, PLAN_LABEL } from '@/lib/invites/rules'
 import { sendEmailAction } from './actions'
 import type { SendState } from './actions'
 
@@ -21,6 +22,8 @@ export default function EmailForm({ configured, sandbox, siteUrl }: { configured
   const [body, setBody] = useState(TEMPLATES.beta_invite.body)
   const [ctaCoba, setCtaCoba] = useState(TEMPLATES.beta_invite.ctas.coba)
   const [ctaDaftar, setCtaDaftar] = useState(TEMPLATES.beta_invite.ctas.daftar)
+  const [ctaAktivasi, setCtaAktivasi] = useState(TEMPLATES.beta_invite.ctas.aktivasi)
+  const [invitePlan, setInvitePlan] = useState<string>(INVITE.defaultPlan)
   const [recipients, setRecipients] = useState('')
 
   const parsed = useMemo(() => parseRecipients(recipients), [recipients])
@@ -32,9 +35,13 @@ export default function EmailForm({ configured, sandbox, siteUrl }: { configured
         subject,
         body: body || '(isi email kosong)',
         recipient: parsed.valid[0] ?? { email: 'contoh@email.com', name: '' },
-        ctas: buildCtas({ coba: ctaCoba, daftar: ctaDaftar }, siteUrl),
+        ctas: buildCtas(
+          { coba: ctaCoba, daftar: ctaDaftar, aktivasi: ctaAktivasi },
+          siteUrl,
+          ctaAktivasi ? `${siteUrl}/aktivasi#LINK-UNIK-PER-PENERIMA` : undefined,
+        ),
       }),
-    [subject, body, ctaCoba, ctaDaftar, parsed.valid, siteUrl],
+    [subject, body, ctaCoba, ctaDaftar, ctaAktivasi, parsed.valid, siteUrl],
   )
 
   function pickTemplate(key: TemplateKey) {
@@ -43,6 +50,7 @@ export default function EmailForm({ configured, sandbox, siteUrl }: { configured
     setBody(TEMPLATES[key].body)
     setCtaCoba(TEMPLATES[key].ctas.coba)
     setCtaDaftar(TEMPLATES[key].ctas.daftar)
+    setCtaAktivasi(TEMPLATES[key].ctas.aktivasi)
   }
 
   const canSend = configured && !pending && parsed.valid.length > 0 && parsed.invalid.length === 0 && !tooMany
@@ -69,6 +77,21 @@ export default function EmailForm({ configured, sandbox, siteUrl }: { configured
 
         <fieldset className="space-y-1.5">
           <legend className={label}>Tombol di bawah isi email</legend>
+          <label className="flex items-center gap-2 text-sm font-medium text-card-foreground">
+            <input type="checkbox" name="cta_aktivasi" checked={ctaAktivasi} onChange={(e) => setCtaAktivasi(e.target.checked)} />
+            &quot;Aktifkan akun beta&quot; (link unik per penerima, berlaku {INVITE.ttlDays} hari). Tombol utama.
+          </label>
+          {ctaAktivasi && (
+            <div className="ml-6 flex items-center gap-2 text-sm font-medium text-card-foreground">
+              <label htmlFor="invite_plan" className={label}>Paket yang diberikan</label>
+              <select id="invite_plan" name="invite_plan" value={invitePlan} onChange={(e) => setInvitePlan(e.target.value)} className={`${field} w-auto`}>
+                {INVITE.plans.map((p) => (
+                  <option key={p} value={p}>{PLAN_LABEL[p]}</option>
+                ))}
+              </select>
+              <span className="text-xs text-muted">aktif {INVITE.benefitDays} hari sejak aktivasi</span>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm font-medium text-card-foreground">
             <input type="checkbox" name="cta_coba" checked={ctaCoba} onChange={(e) => setCtaCoba(e.target.checked)} />
             &quot;Coba contoh dulu&quot; (ke {siteUrl}/coba). Tombol utama, demo tanpa daftar.

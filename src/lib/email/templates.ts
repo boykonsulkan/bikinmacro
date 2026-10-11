@@ -21,15 +21,23 @@ export function oneLine(s: string): string {
 export type Cta = { label: string; url: string; style?: 'primary' | 'secondary' }
 
 /**
- * Tombol ajakan standar. Kalau "Coba contoh" menyala, dia jadi tombol utama (hijau penuh) dan "Daftar" jadi tombol
- * kedua (outline). Kalau "Daftar" sendirian, dia jadi tombol utama.
+ * Tombol ajakan standar, urut dari yang utama:
+ * - "Aktifkan akun beta" (link unik per penerima) kalau ada, jadi tombol utama.
+ * - "Coba contoh dulu" jadi utama kalau tanpa aktivasi, selain itu tombol kedua.
+ * - "Daftar" selalu tombol kedua kalau ada tombol lain, utama kalau sendirian.
  */
-export function buildCtas(flags: { coba: boolean; daftar: boolean }, siteUrl: string): Cta[] {
+export function buildCtas(
+  flags: { coba: boolean; daftar: boolean; aktivasi?: boolean },
+  siteUrl: string,
+  activationUrl?: string,
+): Cta[] {
   const base = siteUrl.replace(/\/+$/, '')
   const out: Cta[] = []
-  if (flags.coba) out.push({ label: 'Coba contoh dulu', url: `${base}/coba`, style: 'primary' })
+  const withActivation = !!flags.aktivasi && !!activationUrl
+  if (withActivation) out.push({ label: 'Aktifkan akun beta', url: activationUrl as string, style: 'primary' })
+  if (flags.coba) out.push({ label: 'Coba contoh dulu', url: `${base}/coba`, style: withActivation ? 'secondary' : 'primary' })
   if (flags.daftar) {
-    out.push({ label: 'Daftar sebagai beta tester', url: `${base}/auth/register`, style: flags.coba ? 'secondary' : 'primary' })
+    out.push({ label: 'Daftar sebagai beta tester', url: `${base}/auth/register`, style: out.length > 0 ? 'secondary' : 'primary' })
   }
   return out
 }

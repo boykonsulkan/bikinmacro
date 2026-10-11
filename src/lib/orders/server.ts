@@ -100,3 +100,13 @@ export async function getAdminUser() {
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   return profile?.role === 'admin' ? user : null
 }
+
+/**
+ * Apakah tabel ada? Pakai query GET biasa. JANGAN pakai query HEAD (select(..., { head: true })):
+ * supabase-js nggak melaporkan error untuk tabel yang hilang pada HEAD (error kosong, count null),
+ * jadi pengecekan seperti itu selalu "lolos" walau tabelnya belum dibuat.
+ */
+export async function tableExists(db: ReturnType<typeof serviceClient>, table: string): Promise<boolean> {
+  const { error } = await db.from(table).select('id').limit(1)
+  return !error
+}

@@ -18,7 +18,7 @@ export type TemplateDef = {
   subject: string
   body: string
   /** Tombol ajakan yang menyala dari awal untuk template ini. */
-  ctas: { coba: boolean; daftar: boolean }
+  ctas: { coba: boolean; daftar: boolean; aktivasi: boolean }
 }
 
 // Teks ditulis dengan gaya produk: "kamu", santai, tanpa em dash atau en dash.
@@ -27,18 +27,19 @@ export const TEMPLATES: Record<TemplateKey, TemplateDef> = {
   beta_invite: {
     label: 'Undangan beta tester',
     subject: 'Kamu diundang jadi beta tester BikinMacro',
-    ctas: { coba: true, daftar: true },
+    ctas: { coba: true, daftar: false, aktivasi: true },
     body: [
       'Kami lagi uji coba BikinMacro, tool yang bikin file Excel macro dari cerita kerjaan kamu. Kamu salah satu dari beberapa orang yang kami undang buat nyoba duluan.',
-      'Biar cepat kebayang, coba contoh yang sudah kami siapin dulu. Kamu download file contoh, upload, lalu dapat file Excel yang langsung jalan. Nggak perlu daftar, tapi butuh Excel desktop di Windows.',
-      'Kalau sudah paham alurnya:\n1. Daftar di BikinMacro pakai email ini.\n2. Ceritain satu kerjaan Excel yang sering kamu ulang.\n3. Coba macro-nya, lalu kasih tahu kami apa yang kurang pas.',
+      'Kamu nggak perlu daftar. Klik tombol "Aktifkan akun beta", buat password, dan akunmu langsung siap dipakai. Link ini khusus buat kamu dan berlaku 14 hari.',
+      'Mau lihat dulu gambaran hasilnya? Coba contoh yang sudah kami siapin: download file contoh, upload, lalu dapat file Excel yang langsung jalan. Nggak perlu akun, tapi butuh Excel desktop di Windows.',
+      'Setelah akunmu aktif:\n1. Ceritain satu kerjaan Excel yang sering kamu ulang.\n2. Coba macro-nya, lalu kasih tahu kami apa yang kurang pas.',
       'Akses kamu kami buka khusus selama masa beta. Kalau ada pertanyaan, balas aja email ini.',
     ].join('\n\n'),
   },
   free: {
     label: 'Pesan bebas',
     subject: '',
-    ctas: { coba: false, daftar: false },
+    ctas: { coba: false, daftar: false, aktivasi: false },
     body: '',
   },
 }

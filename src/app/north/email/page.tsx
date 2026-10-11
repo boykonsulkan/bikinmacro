@@ -3,7 +3,9 @@ import { checkSenderDomain, emailConfig } from '@/lib/email/resend'
 import { EMAIL_LIMITS } from '@/lib/email/config'
 import { getAdminUser, serviceClient } from '@/lib/orders/server'
 import { formatDateTime } from '@/components/pesan/format'
+import { PLAN_LABEL, inviteState } from '@/lib/invites/rules'
 import EmailForm from './EmailForm'
+import { revokeInviteAction } from './invite-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +20,12 @@ export default async function AdminEmailPage() {
   const { data: logs, error } = await db
     .from('email_logs')
     .select('id, created_at, to_email, subject, template, status, error')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  const { data: invites, error: invitesError } = await db
+    .from('beta_invites')
+    .select('id, created_at, email, plan, status, expires_at, activated_at')
     .order('created_at', { ascending: false })
     .limit(50)
 
@@ -67,6 +75,65 @@ export default async function AdminEmailPage() {
       )}
 
       <EmailForm configured={cfg.configured} sandbox={cfg.sandbox} siteUrl={siteUrl} />
+
+      <section>
+        <h2 className="mb-1 text-sm font-bold text-foreground">Undangan beta (50 terakhir)</h2>
+        <p className="mb-3 text-xs text-muted">
+          Tiap penerima yang diundang lewat tombol &quot;Aktifkan akun beta&quot; punya satu link unik. Status &quot;Aktif&quot; berarti akunnya sudah
+          dibuat dan paketnya menyala.
+        </p>
+        {invitesError && (
+          <p className="mb-3 rounded-lg border border-warning-border bg-warning-bg p-4 text-sm font-semibold text-warning-ink">
+            Tabel beta_invites belum ada. Jalankan scripts/beta_invites_schema.sql di Supabase. Tombol &quot;Aktifkan akun beta&quot; menolak
+            bekerja sampai tabelnya ada.
+          </p>
+        )}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border bg-excel-head text-xs font-semibold text-muted">
+                <tr>
+                  <th className="px-5 py-3">Dibuat</th>
+                  <th className="px-5 py-3">Email</th>
+                  <th className="px-5 py-3">Paket</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Berlaku sampai</th>
+                  <th className="px-5 py-3"><span className="sr-only">Aksi</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(invites ?? []).map((i) => {
+                  const state = inviteState(i)
+                  return (
+                    <tr key={i.id} className="border-t border-border align-top">
+                      <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(i.created_at)}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-card-foreground">{i.email}</td>
+                      <td className="px-5 py-3 text-card-foreground">{PLAN_LABEL[i.plan as string] ?? i.plan}</td>
+                      <td className="px-5 py-3">
+                        <span className={state === 'activated' ? 'font-semibold text-accent-ink' : state === 'ok' ? 'font-semibold text-card-foreground' : 'text-muted'}>
+                          {state === 'ok' ? 'Menunggu' : state === 'activated' ? `Aktif (${i.activated_at ? formatDateTime(i.activated_at) : ''})` : state === 'expired' ? 'Kedaluwarsa' : 'Dicabut'}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDateTime(i.expires_at)}</td>
+                      <td className="px-5 py-3">
+                        {state === 'ok' && (
+                          <form action={revokeInviteAction}>
+                            <input type="hidden" name="id" value={i.id} />
+                            <button type="submit" className="text-xs font-bold text-danger hover:underline">Cabut</button>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+                {(invites ?? []).length === 0 && !invitesError && (
+                  <tr><td colSpan={6} className="px-5 py-8 text-center text-muted">Belum ada undangan.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-bold text-foreground">Riwayat kirim (50 terakhir)</h2>
