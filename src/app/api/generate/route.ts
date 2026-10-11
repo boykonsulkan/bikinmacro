@@ -5,8 +5,10 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 
+// Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
+// sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
 const OPENROUTER_FALLBACK_MODELS = [
-  'google/gemini-2.0-flash-exp:free',
+  'openai/gpt-4o-mini',
 ]
 
 function getAiModel(provider: string, model: string) {
@@ -23,7 +25,7 @@ function getAiModel(provider: string, model: string) {
   }
   if (provider === 'gemini') {
     const google = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })
-    return google(model || 'gemini-2.0-flash')
+    return google(model || 'gemini-3.5-flash-lite')
   }
   const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   return anthropic((model || 'claude-3-5-sonnet-20240620') as Parameters<ReturnType<typeof createAnthropic>>[0])
@@ -98,13 +100,18 @@ PENTING: Jika permintaan user BUKAN tentang Excel, VBA, atau Macro, TOLAK permin
       genResult = await generateText({ model: getAiModel(aiProvider, aiModel), system: systemPrompt, prompt: userPrompt, temperature: 0.2 })
     } catch (err: any) {
       const errStr = JSON.stringify({ m: err?.message, b: err?.responseBody, c: err?.cause?.message })
-      const shouldFallback = aiProvider === 'openrouter' && (
+      const shouldFallback = (aiProvider === 'openrouter' || (aiProvider === 'gemini' && !!process.env.OPENROUTER_API_KEY)) && (
         errStr.includes('No endpoints found') ||
         errStr.includes('unavailable') ||
         errStr.includes('404') ||
         errStr.includes('Provider returned error') ||
         errStr.includes('rate limit') ||
-        errStr.includes('overloaded')
+        errStr.includes('overloaded') ||
+        errStr.includes('429') ||
+        errStr.includes('503') ||
+        errStr.includes('quota') ||
+        errStr.includes('high demand') ||
+        errStr.includes('no longer available')
       )
       if (shouldFallback) {
         let lastErr = err
