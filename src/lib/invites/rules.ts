@@ -24,6 +24,28 @@ export function shouldUpgrade(currentPlan: string | null | undefined, role: stri
   return (PLAN_RANK[newPlan] ?? 0) > (PLAN_RANK[currentPlan ?? 'free'] ?? 0)
 }
 
+export type PurchaseState = 'available' | 'current' | 'included'
+
+/**
+ * Status sebuah paket di halaman harga untuk pengguna ini:
+ * - available: boleh dibeli (paket di atas paket sekarang).
+ * - current: paket yang sedang aktif.
+ * - included: paket di bawah paket sekarang (nggak ada gunanya dibeli, jadi dinonaktifkan).
+ * Admin selalu available supaya bisa menguji pembayaran. Berlaku sama di tampilan dan di checkout server.
+ */
+export function purchaseState(currentPlan: string | null | undefined, role: string | null | undefined, cardPlan: string): PurchaseState {
+  if (role === 'admin') return 'available'
+  const cur = PLAN_RANK[currentPlan ?? 'free'] ?? 0
+  const card = PLAN_RANK[cardPlan] ?? 0
+  if (card > cur) return 'available'
+  return card === cur ? 'current' : 'included'
+}
+
+export const PURCHASE_BLOCK_MESSAGE: Record<Exclude<PurchaseState, 'available'>, string> = {
+  current: 'Paket ini sudah aktif di akunmu.',
+  included: 'Paketmu sekarang sudah di atas paket ini. Kamu cuma bisa upgrade ke paket yang lebih tinggi.',
+}
+
 /**
  * Apakah aktivasi boleh mengatur password? Link undangan membuktikan penerimanya pemilik email (seperti link reset password),
  * jadi akun biasa boleh. Akun admin TIDAK: password admin nggak boleh diubah lewat link yang dikirim.

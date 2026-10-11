@@ -5,7 +5,9 @@ import {
   STATE_MESSAGE,
   inviteState,
   isInvitePlan,
+  PURCHASE_BLOCK_MESSAGE,
   maskEmail,
+  purchaseState,
   shouldSetPassword,
   shouldUpgrade,
   validatePassword,
@@ -68,6 +70,27 @@ test('shouldUpgrade: hanya menaikkan, nggak pernah menurunkan, admin nggak disen
   assert.equal(shouldUpgrade('starter', 'user', 'addon'), false)
   assert.equal(shouldUpgrade('free', 'admin', 'pro'), false)
   assert.equal(shouldUpgrade('free', 'user', 'tidak-ada'), false)
+})
+test('purchaseState: cuma paket di atas paket sekarang yang bisa dibeli (kasus Starter: addon dan starter abu-abu)', () => {
+  // pengguna Starter
+  assert.equal(purchaseState('starter', 'user', 'addon'), 'included')
+  assert.equal(purchaseState('starter', 'user', 'starter'), 'current')
+  assert.equal(purchaseState('starter', 'user', 'pro'), 'available')
+  // pengguna Pro: semuanya terkunci
+  assert.deepEqual(['addon', 'starter', 'pro'].map((p) => purchaseState('pro', 'user', p)), ['included', 'included', 'current'])
+  // pengguna free atau belum punya paket: semuanya terbuka
+  assert.deepEqual(['addon', 'starter', 'pro'].map((p) => purchaseState('free', 'user', p)), ['available', 'available', 'available'])
+  assert.deepEqual(['addon', 'starter', 'pro'].map((p) => purchaseState(null, null, p)), ['available', 'available', 'available'])
+  // pengguna Addon: addon terkunci, starter dan pro terbuka
+  assert.deepEqual(['addon', 'starter', 'pro'].map((p) => purchaseState('addon', 'user', p)), ['current', 'available', 'available'])
+})
+test('purchaseState: admin selalu bisa membeli (untuk menguji pembayaran), dan paket asing nggak dianggap bisa dibeli', () => {
+  for (const plan of ['free', 'addon', 'starter', 'pro']) {
+    for (const card of ['addon', 'starter', 'pro']) assert.equal(purchaseState(plan, 'admin', card), 'available')
+  }
+  assert.notEqual(purchaseState('starter', 'user', 'paket-ngawur'), 'available')
+  assert.ok(PURCHASE_BLOCK_MESSAGE.current.length > 10 && PURCHASE_BLOCK_MESSAGE.included.length > 10)
+  assert.ok(!/[–—]/.test(PURCHASE_BLOCK_MESSAGE.current + PURCHASE_BLOCK_MESSAGE.included))
 })
 test('shouldSetPassword: akun biasa boleh diatur ulang lewat undangan, admin TIDAK', () => {
   assert.equal(shouldSetPassword('user'), true)

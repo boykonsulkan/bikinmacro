@@ -1,11 +1,33 @@
 import { Check, X, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import PricingButton from './PricingButton'
+import { PLAN_LABEL, purchaseState } from '@/lib/invites/rules'
+import type { PurchaseState } from '@/lib/invites/rules'
 
 export default async function PricingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const isLoggedIn = !!user
+
+  // Paket aktif pengguna: paket yang sama atau di bawahnya nggak bisa dibeli lagi (cuma boleh upgrade).
+  const { data: profile } = user
+    ? await supabase.from('users').select('plan, role').eq('id', user.id).single()
+    : { data: null }
+  const currentPlan = (profile?.plan as string | undefined) ?? 'free'
+  const states: Record<'addon' | 'starter' | 'pro', PurchaseState> = {
+    addon: purchaseState(currentPlan, profile?.role, 'addon'),
+    starter: purchaseState(currentPlan, profile?.role, 'starter'),
+    pro: purchaseState(currentPlan, profile?.role, 'pro'),
+  }
+  const locked = (s: PurchaseState) => isLoggedIn && s !== 'available'
+  const lockedClass =
+    'w-full bg-surface text-muted border border-border py-3 rounded-xl font-medium text-center cursor-not-allowed'
+  const lockedLabel = (s: PurchaseState) => (s === 'current' ? 'Paket aktif kamu' : 'Sudah termasuk di paketmu')
+  const activeBadge = (
+    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-navy text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+      Paket aktif kamu
+    </div>
+  )
 
   const { data: adminSettings } = await supabase
     .from('admin_settings')
@@ -19,12 +41,19 @@ export default async function PricingPage() {
     <div className="flex-1 w-full max-w-5xl mx-auto p-6 sm:p-12">
       <div className="text-center mb-16 mt-8">
         <h1 className="text-4xl font-extrabold text-foreground mb-4">Pilih paket kamu</h1>
-        <p className="text-lg text-muted">Upgrade untuk AI premium dan fitur lebih lengkap.</p>
+        <p className="text-lg text-muted">
+          {isLoggedIn && currentPlan !== 'free' && profile?.role !== 'admin'
+            ? currentPlan === 'pro'
+              ? 'Kamu sudah di paket tertinggi.'
+              : `Paketmu sekarang: ${PLAN_LABEL[currentPlan] ?? currentPlan}. Kamu bisa upgrade ke paket yang lebih tinggi.`
+            : 'Upgrade untuk AI premium dan fitur lebih lengkap.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Addon Pack */}
-        <div className="bg-card border border-border rounded-2xl p-8 flex flex-col">
+        <div className={`bg-card border border-border rounded-2xl p-8 flex flex-col relative ${locked(states.addon) && states.addon !== 'current' ? 'opacity-60' : ''}`}>
+          {locked(states.addon) && states.addon === 'current' && activeBadge}
           <h3 className="text-xl font-bold text-foreground mb-2">Macro Addon</h3>
           <div className="flex items-baseline gap-1 mb-2">
             <span className="text-3xl font-extrabold text-foreground">Rp 25.000</span>
@@ -51,14 +80,16 @@ export default async function PricingPage() {
 
           <PricingButton 
             plan="addon"
-            label={isLoggedIn ? 'Beli Sekarang' : 'Login untuk Membeli'}
+            label={locked(states.addon) ? lockedLabel(states.addon) : isLoggedIn ? 'Beli Sekarang' : 'Login untuk Membeli'}
             isLoggedIn={isLoggedIn}
-            className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
+            disabled={locked(states.addon)}
+            className={locked(states.addon) ? lockedClass : 'w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center'}
           />
         </div>
 
         {/* Starter */}
-        <div className="bg-card border border-border rounded-2xl p-8 flex flex-col relative">
+        <div className={`bg-card border border-border rounded-2xl p-8 flex flex-col relative ${locked(states.starter) && states.starter !== 'current' ? 'opacity-60' : ''}`}>
+          {locked(states.starter) && states.starter === 'current' && activeBadge}
           <h3 className="text-xl font-bold text-foreground mb-2">Starter</h3>
           <div className="flex items-baseline gap-1 mb-2">
             <span className="text-3xl font-extrabold text-foreground">Rp 79.000</span>
@@ -86,17 +117,22 @@ export default async function PricingPage() {
 
           <PricingButton 
             plan="starter"
-            label={isLoggedIn ? 'Pilih Starter' : 'Login untuk Membeli'}
+            label={locked(states.starter) ? lockedLabel(states.starter) : isLoggedIn ? 'Pilih Starter' : 'Login untuk Membeli'}
             isLoggedIn={isLoggedIn}
-            className="w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center"
+            disabled={locked(states.starter)}
+            className={locked(states.starter) ? lockedClass : 'w-full bg-card hover:bg-border text-foreground border border-border py-3 rounded-xl font-medium transition-colors text-center'}
           />
         </div>
 
         {/* Pro */}
         <div className="bg-card border-2 border-primary rounded-2xl p-8 flex flex-col relative shadow-lg shadow-primary/10">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-            <span>✨</span> Paling Worth
-          </div>
+          {locked(states.pro) && states.pro === 'current' ? (
+            activeBadge
+          ) : (
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+              <span>✨</span> Paling Worth
+            </div>
+          )}
           
           <h3 className="text-xl font-bold text-foreground mb-2">Pro</h3>
           <div className="flex items-baseline gap-1 mb-2">
@@ -125,9 +161,10 @@ export default async function PricingPage() {
 
           <PricingButton 
             plan="pro"
-            label={isLoggedIn ? 'Pilih Pro' : 'Login untuk Membeli'}
+            label={locked(states.pro) ? lockedLabel(states.pro) : isLoggedIn ? 'Pilih Pro' : 'Login untuk Membeli'}
             isLoggedIn={isLoggedIn}
-            className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-medium transition-colors text-center shadow-lg shadow-primary/20"
+            disabled={locked(states.pro)}
+            className={locked(states.pro) ? lockedClass : 'w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-medium transition-colors text-center shadow-lg shadow-primary/20'}
           />
         </div>
       </div>
@@ -138,7 +175,7 @@ export default async function PricingPage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700">
             <ShieldCheck size={14} className="shrink-0" />
             Pembayaran diproses oleh <strong className="mx-1">Xendit</strong> atas nama
-            <strong className="mx-1">konsulkan.com</strong> — parent brand dari BikinMacro.
+            <strong className="mx-1">konsulkan.com</strong>, parent brand dari BikinMacro.
             Xendit terdaftar dan diawasi oleh Bank Indonesia.
           </div>
         ) : (

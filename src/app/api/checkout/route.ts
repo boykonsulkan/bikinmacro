@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { checkKeys } from '@/lib/midtrans/keys'
+import { PLAN_RANK, PURCHASE_BLOCK_MESSAGE, purchaseState } from '@/lib/invites/rules'
 const midtransClient = require('midtrans-client')
 
 export async function POST(req: Request) {
@@ -13,6 +14,16 @@ export async function POST(req: Request) {
     }
 
     const { plan } = await req.json()
+
+    // Cuma boleh upgrade: paket yang sama atau di bawah paket sekarang ditolak di server (tombol di /pricing
+    // cuma tampilan). Admin dikecualikan supaya bisa menguji pembayaran.
+    if (typeof plan === 'string' && (PLAN_RANK[plan] ?? 0) > 0) {
+      const { data: current } = await supabase.from('users').select('plan, role').eq('id', user.id).single()
+      const state = purchaseState(current?.plan, current?.role, plan)
+      if (state !== 'available') {
+        return NextResponse.json({ error: PURCHASE_BLOCK_MESSAGE[state] }, { status: 400 })
+      }
+    }
 
     // Fetch payment configuration
     const { data: adminSettings } = await supabase

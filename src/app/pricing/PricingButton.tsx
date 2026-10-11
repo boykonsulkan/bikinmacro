@@ -9,9 +9,11 @@ interface PricingButtonProps {
   label: string
   isLoggedIn: boolean
   className?: string
+  /** Paket ini nggak bisa dibeli (sudah aktif atau di bawah paket sekarang). */
+  disabled?: boolean
 }
 
-export default function PricingButton({ plan, label, isLoggedIn, className }: PricingButtonProps) {
+export default function PricingButton({ plan, label, isLoggedIn, className, disabled = false }: PricingButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -63,7 +65,8 @@ export default function PricingButton({ plan, label, isLoggedIn, className }: Pr
   return (
     <button
       onClick={handleCheckout}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
+      aria-disabled={disabled || undefined}
       className={className}
     >
       {isLoading ? <Loader2 className="animate-spin mx-auto" size={18} /> : label}
