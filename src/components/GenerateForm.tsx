@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRight } from 'lucide-react'
+import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRight, ChevronDown, FileSpreadsheet } from 'lucide-react'
 import { codeToHtml } from 'shiki'
 import MacroChat from './MacroChat'
+import UsageGuide from './UsageGuide'
 
 const CATEGORIES = [
   'Data Processing',
@@ -72,6 +73,9 @@ export default function GenerateForm({
   const [chatMax, setChatMax] = useState(maxChatPerGeneration)
   const [viewMode, setViewMode] = useState<'initial' | 'questions' | 'chat'>('initial')
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   const handleGoToQuestions = () => {
     if (!prompt.trim()) return
@@ -140,14 +144,39 @@ export default function GenerateForm({
     setTimeout(() => setIsCopied(false), 2000)
   }
 
-  const downloadFile = () => {
+  const saveBlob = (blob: Blob, filename: string) => {
     const element = document.createElement('a')
-    const file = new Blob([outputRaw], { type: 'text/plain' })
-    element.href = URL.createObjectURL(file)
-    element.download = 'macro.bas'
+    element.href = URL.createObjectURL(blob)
+    element.download = filename
     document.body.appendChild(element)
     element.click()
     document.body.removeChild(element)
+    URL.revokeObjectURL(element.href)
+  }
+
+  const downloadBas = () => {
+    setMenuOpen(false)
+    setExportError('')
+    saveBlob(new Blob([outputRaw], { type: 'text/plain' }), 'macro.bas')
+  }
+
+  const downloadXlsm = async () => {
+    if (!generationId) return
+    setMenuOpen(false)
+    setExportError('')
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/export/xlsm?generation_id=${encodeURIComponent(generationId)}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Gagal membuat file Excel. Unduh versi .bas sebagai gantinya.')
+      }
+      saveBlob(await res.blob(), 'BikinMacro.xlsm')
+    } catch (err: any) {
+      setExportError(err.message)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const resetForm = () => {
@@ -273,15 +302,49 @@ export default function GenerateForm({
               {isCopied ? <Check size={16} /> : <Copy size={16} />}
               {isCopied ? 'Copied' : 'Copy VBA'}
             </button>
-            <button
-              onClick={downloadFile}
-              className="p-2 hover:bg-card border border-border rounded-xl text-muted hover:text-foreground transition-colors"
-              title="Download .bas file"
-            >
-              <Download size={18} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                disabled={exporting}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex items-center gap-2 px-3 py-2 border border-border rounded-xl text-sm font-medium text-muted hover:text-foreground hover:bg-card transition-colors disabled:opacity-50"
+              >
+                {exporting ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+                {exporting ? 'Menyiapkan...' : 'Unduh'}
+                <ChevronDown size={14} />
+              </button>
+              {menuOpen && (
+                <div role="menu" className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-2xl shadow-xl z-10 p-2">
+                  <button role="menuitem" onClick={downloadBas} className="w-full text-left p-3 rounded-xl hover:bg-gray-50 flex gap-3">
+                    <FileCode2 size={18} className="mt-0.5 shrink-0 text-primary" />
+                    <span>
+                      <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        File .bas
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">Disarankan</span>
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">Import ke Excel milikmu. Paling stabil.</span>
+                    </span>
+                  </button>
+                  <button role="menuitem" onClick={downloadXlsm} className="w-full text-left p-3 rounded-xl hover:bg-gray-50 flex gap-3">
+                    <FileSpreadsheet size={18} className="mt-0.5 shrink-0 text-gray-500" />
+                    <span>
+                      <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        Excel .xlsm
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Beta</span>
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5">Workbook kosong yang sudah berisi macro. Masih tahap uji.</span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {exportError && (
+          <div role="alert" className="bg-red-50 border-b border-red-100 text-red-600 px-6 py-2 text-sm shrink-0">{exportError}</div>
+        )}
 
         <div className="flex-1 flex overflow-hidden">
           <div className="w-1/3 min-w-[350px] border-r border-border flex flex-col bg-background">
@@ -316,23 +379,7 @@ export default function GenerateForm({
                   </div>
                 </div>
 
-                <div className="mt-8 p-6 bg-white border border-gray-200 rounded-2xl">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Implementation Guide</h4>
-                  <div className="grid grid-cols-3 gap-4 text-[11px] text-gray-500 uppercase tracking-wider font-bold">
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col gap-1">
-                      <span className="text-primary">Step 1</span>
-                      Open VBA (Alt+F11)
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col gap-1">
-                      <span className="text-primary">Step 2</span>
-                      Insert Module
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col gap-1">
-                      <span className="text-primary">Step 3</span>
-                      Paste & Run (F5)
-                    </div>
-                  </div>
-                </div>
+                <UsageGuide />
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { Fragment, useRef, useState, useEffect } from 'react'
 import { Send, MessageSquare, RefreshCw, Lock } from 'lucide-react'
 import { codeToHtml } from 'shiki'
 
@@ -119,7 +119,8 @@ export default function MacroChat({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar bg-background">
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          <Fragment key={i}>
+          <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[90%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
               m.role === 'user'
                 ? 'bg-primary text-white rounded-br-sm shadow-sm'
@@ -131,6 +132,26 @@ export default function MacroChat({
               {m.content}
             </div>
           </div>
+          {i === 0 && (
+            <div className="flex justify-start">
+              <div className="max-w-[90%] px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm leading-relaxed bg-card border border-border text-foreground shadow-sm">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-primary mb-1">BikinMacro AI</span>
+                <p>Macro kamu sudah jadi. Cara memasangnya:</p>
+                <ol className="list-decimal pl-5 my-2 space-y-1">
+                  <li>Klik Unduh lalu pilih File .bas (disarankan).</li>
+                  <li>Di Excel tekan Alt + F11, lalu File, Import File, pilih macro.bas.</li>
+                  <li>Tekan F5 untuk menjalankan.</li>
+                </ol>
+                <p>Atau klik Copy VBA, lalu di editor VBA pilih Insert, Module dan tempel kodenya.</p>
+                <p className="mt-2 font-semibold">
+                  Penting: simpan hasilnya lewat Save As bertipe Excel Macro-Enabled Workbook (.xlsm), bukan .xlsx
+                  biasa, supaya macro-nya tidak hilang.
+                </p>
+                <p className="mt-2">Ada bagian kode yang bikin bingung? Tanya di sini, aku jelaskan.</p>
+              </div>
+            </div>
+          )}
+          </Fragment>
         ))}
         {isLoading && (
           <div className="flex justify-start">
