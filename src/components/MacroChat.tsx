@@ -14,17 +14,22 @@ export default function MacroChat({
   maxChats,
   onCodeUpdate,
   initialPrompt,
+  initialMessages,
 }: {
   generationId: string
   maxChats: number
   onCodeUpdate: (rawCode: string, highlightedHtml: string) => void
   initialPrompt?: string
+  /** Riwayat chat yang dimuat ulang dari database (setelah refresh), tanpa pesan permintaan awal. */
+  initialMessages?: ChatMessage[]
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    initialMessages && initialPrompt ? [{ role: 'user', content: initialPrompt }, ...initialMessages] : [],
+  )
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [chatsUsed, setChatsUsed] = useState(0)
+  const [chatsUsed, setChatsUsed] = useState(() => (initialMessages ?? []).filter((m) => m.role === 'user').length)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const chatsRemaining = maxChats - chatsUsed

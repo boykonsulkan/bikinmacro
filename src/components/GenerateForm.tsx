@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRight, ChevronDown, FileSpreadsheet } from 'lucide-react'
@@ -50,32 +50,58 @@ const QUESTIONS = [
   },
 ]
 
+export type ResumeState = {
+  id: string
+  prompt: string
+  code: string
+  chats: { role: 'user' | 'assistant'; content: string }[]
+}
+
 export default function GenerateForm({
   hasCredits,
   creditsRemaining,
   isAdmin,
   maxChatPerGeneration,
+  resume = null,
 }: {
   hasCredits: boolean
   creditsRemaining: number
   isAdmin: boolean
   maxChatPerGeneration: number
+  resume?: ResumeState | null
 }) {
   const router = useRouter()
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(resume?.prompt ?? '')
   const [category, setCategory] = useState(CATEGORIES[0])
   const [isLoading, setIsLoading] = useState(false)
   const [outputHtml, setOutputHtml] = useState('')
-  const [outputRaw, setOutputRaw] = useState('')
+  const [outputRaw, setOutputRaw] = useState(resume?.code ?? '')
   const [isCopied, setIsCopied] = useState(false)
   const [error, setError] = useState('')
-  const [generationId, setGenerationId] = useState<string | null>(null)
+  const [generationId, setGenerationId] = useState<string | null>(resume?.id ?? null)
   const [chatMax, setChatMax] = useState(maxChatPerGeneration)
-  const [viewMode, setViewMode] = useState<'initial' | 'questions' | 'chat'>('initial')
+  const [viewMode, setViewMode] = useState<'initial' | 'questions' | 'chat'>(resume ? 'chat' : 'initial')
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [menuOpen, setMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+
+  // Setelah refresh, kode dimuat dari database tanpa warna: warnai di sini.
+  useEffect(() => {
+    if (!resume) return
+    let cancelled = false
+    codeToHtml(resume.code, { lang: 'vb', theme: 'github-dark' }).then((html) => {
+      if (!cancelled) setOutputHtml(html)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [resume])
+
+  // Simpan id generasi di URL supaya refresh kembali ke chat yang sama (tanpa memuat ulang halaman).
+  const rememberGeneration = (id: string | null) => {
+    window.history.replaceState(null, '', id ? `/generate?g=${encodeURIComponent(id)}` : '/generate')
+  }
 
   const handleGoToQuestions = () => {
     if (!prompt.trim()) return
@@ -119,6 +145,7 @@ export default function GenerateForm({
       const data = await res.json()
       setOutputRaw(data.vba_code)
       setGenerationId(data.generation_id ?? null)
+      if (data.generation_id) rememberGeneration(data.generation_id)
       setChatMax(data.max_chat_per_generation ?? maxChatPerGeneration)
 
       const html = await codeToHtml(data.vba_code, { lang: 'vb', theme: 'github-dark' })
@@ -184,6 +211,7 @@ export default function GenerateForm({
     setOutputHtml('')
     setOutputRaw('')
     setGenerationId(null)
+    rememberGeneration(null)
     setAnswers({})
     setViewMode('initial')
   }
@@ -353,6 +381,7 @@ export default function GenerateForm({
               maxChats={chatMax}
               onCodeUpdate={handleChatCodeUpdate}
               initialPrompt={prompt}
+              initialMessages={resume?.chats}
             />
           </div>
 
