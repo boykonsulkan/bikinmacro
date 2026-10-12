@@ -1,4 +1,5 @@
 // Tes perhitungan biaya AI: npx tsx scripts/test-ai-cost.ts
+import './shim-server-only'
 import assert from 'node:assert/strict'
 import { AI_BUDGET, budgetLevel, estimateCostUsd, monthStartIso, priceFor, summarizeUsage, wibDay } from '../src/lib/ai/cost'
 import type { UsageRow } from '../src/lib/ai/cost'
@@ -94,15 +95,7 @@ test('ringkasan: pemakaian besar memicu level exceeded', () => {
 console.log(`\n${passed} tes lolos`)
 
 // ---------- notifikasi anggaran ke admin ----------
-import Module from 'node:module'
 import { AI_BUDGET as B, budgetAlert } from '../src/lib/ai/cost'
-
-const resolver = Module as unknown as { _resolveFilename: (...a: unknown[]) => string }
-const origResolve = resolver._resolveFilename
-resolver._resolveFilename = function (request: unknown, ...rest: unknown[]) {
-  if (request === 'server-only') return require.resolve('./empty-module.cjs')
-  return origResolve.call(this, request, ...rest)
-}
 
 async function alertTests() {
   const { maybeSendBudgetAlert, resetAlertMemo } = await import('../src/lib/ai/alert')

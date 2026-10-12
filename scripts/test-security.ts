@@ -1,14 +1,6 @@
 // Tes pengaman kuota dan laju: npx tsx scripts/test-security.ts
-// Mengimpor reserveCredit lewat jalur relatif; modul 'server-only' dilewati lewat alias di bawah.
+import './shim-server-only'
 import assert from 'node:assert/strict'
-import Module from 'node:module'
-
-// 'server-only' melempar galat di luar bundler Next. Untuk tes, anggap kosong.
-const origResolve = (Module as unknown as { _resolveFilename: (...a: unknown[]) => string })._resolveFilename
-;(Module as unknown as { _resolveFilename: (...a: unknown[]) => string })._resolveFilename = function (request: unknown, ...rest: unknown[]) {
-  if (request === 'server-only') return require.resolve('./empty-module.cjs')
-  return origResolve.call(this, request, ...rest)
-}
 
 let passed = 0
 async function test(name: string, fn: () => Promise<void> | void) {
