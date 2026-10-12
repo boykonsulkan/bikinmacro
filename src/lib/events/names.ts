@@ -19,6 +19,7 @@ export const SERVER_EVENTS = [
   'explain_limit', // pertanyaan penjelasan ditolak karena batas per macro
   'download_xlsm', // file .xlsm berhasil dirakit
   'download_xlsm_failed', // perakitan .xlsm gagal atau ditolak (props: reason)
+  'admin_action', // aksi admin pada pengguna (props: action, target). user_id = admin yang melakukannya
 ] as const
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number]

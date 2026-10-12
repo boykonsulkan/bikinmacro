@@ -18,7 +18,11 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return redirect('/auth/login?message=Could not authenticate user')
+    // Akun yang dinonaktifkan admin diblokir di Supabase Auth: beri pesan yang jelas, bukan galat umum.
+    const message = /banned/i.test(error.message)
+      ? 'Akunmu sedang dinonaktifkan. Hubungi founder lewat halaman Bantuan.'
+      : 'Email atau password salah.'
+    return redirect('/auth/login?message=' + encodeURIComponent(message))
   }
 
   revalidatePath('/', 'layout')
