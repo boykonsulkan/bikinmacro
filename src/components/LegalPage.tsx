@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { founderMailto } from '@/lib/links'
 
 export type LegalSection = { title: string; body: string[] }
 
@@ -34,7 +35,11 @@ export default function LegalPage({
       </div>
 
       <p className="mt-10 text-sm font-medium text-muted">
-        Ada pertanyaan? Hubungi kami lewat{' '}
+        Ada pertanyaan, atau mau meminta penghapusan akun dan datamu?{' '}
+        <a href={founderMailto(`${title}: pertanyaan`)} className="font-bold text-accent-ink underline">
+          Tulis ke founder
+        </a>{' '}
+        atau buka{' '}
         <Link href="/help" className="font-bold text-accent-ink underline">
           halaman Bantuan
         </Link>

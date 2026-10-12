@@ -9,6 +9,7 @@ import { buildChatSystem, buildChatUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection } from '@/lib/ai/server'
 import { serviceClient } from '@/lib/orders/server'
+import { BUDGET_MESSAGE, isOverBudget, recordUsage } from '@/lib/ai/usage'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -116,6 +117,11 @@ export async function POST(req: Request) {
       if (!abuse.ok) return NextResponse.json({ error: abuse.error }, { status: abuse.status })
     }
 
+    // Pemutus anggaran global (lihat /north/ai-cost).
+    if (!isAdmin && (await isOverBudget())) {
+      return NextResponse.json({ error: BUDGET_MESSAGE, code: 'budget' }, { status: 503 })
+    }
+
     // Fetch conversation history for this generation
     const { data: history } = await supabase
       .from('generation_chats')
@@ -139,6 +145,9 @@ export async function POST(req: Request) {
 
     const aiProvider = settings?.ai_provider || getFallbackProvider()
     const aiModel = settings?.ai_model || ''
+    // Model yang benar-benar dipakai (bisa berganti ke cadangan), untuk pencatatan biaya.
+    let usedProvider = aiProvider
+    let usedModel = aiModel || 'default'
 
     let chatResult
     try {
@@ -163,6 +172,8 @@ export async function POST(req: Request) {
         for (const fallback of OPENROUTER_FALLBACK_MODELS) {
           try {
             console.warn(`Model ${aiModel} failed, trying fallback: ${fallback}`)
+            usedProvider = 'openrouter'
+            usedModel = fallback
             chatResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, messages, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
             break
           } catch (e: any) {
@@ -172,6 +183,7 @@ export async function POST(req: Request) {
         if (!chatResult) throw lastErr
       } else throw err
     }
+    await recordUsage(user.id, 'chat', usedProvider, usedModel, chatResult.usage)
     const text = chatResult.text
 
     // Jalur keluar dikunci: cuma revisi VBA valid yang boleh menimpa macro. Penolakan, terjemahan, kode bahasa lain,

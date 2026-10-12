@@ -9,6 +9,7 @@ import { buildGenerateSystem, buildGenerateUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection, reserveCredit } from '@/lib/ai/server'
 import { serviceClient } from '@/lib/orders/server'
+import { BUDGET_MESSAGE, isOverBudget, recordUsage } from '@/lib/ai/usage'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -84,6 +85,9 @@ export async function POST(req: Request) {
 
     const aiProvider = settings?.ai_provider || getFallbackProvider()
     const aiModel = settings?.ai_model || ''
+    // Model yang benar-benar dipakai (bisa berganti ke cadangan), untuk pencatatan biaya.
+    let usedProvider = aiProvider
+    let usedModel = aiModel || 'default'
     const systemContext = settings?.system_context || ''
 
     const isAdmin = profile.role === 'admin'
@@ -95,6 +99,11 @@ export async function POST(req: Request) {
     if (!isAdmin) {
       const abuse = await checkAbuse(user.id)
       if (!abuse.ok) return NextResponse.json({ error: abuse.error }, { status: abuse.status })
+    }
+
+    // Pemutus anggaran global: kalau perkiraan biaya AI bulan ini melewati anggaran, berhenti untuk pengguna biasa.
+    if (!isAdmin && (await isOverBudget())) {
+      return NextResponse.json({ error: BUDGET_MESSAGE, code: 'budget' }, { status: 503 })
     }
 
     // Pesan kredit secara atomik SEBELUM memanggil AI: permintaan paralel nggak bisa melewati kuota bersamaan.
@@ -135,6 +144,8 @@ export async function POST(req: Request) {
         for (const fallback of OPENROUTER_FALLBACK_MODELS) {
           try {
             console.warn(`Model ${aiModel} failed, trying fallback: ${fallback}`)
+            usedProvider = 'openrouter'
+            usedModel = fallback
             genResult = await generateText({ model: getAiModel('openrouter', fallback), system: systemPrompt, prompt: userPrompt, temperature: 0.2, maxOutputTokens: AI_LIMITS.maxOutputTokens })
             break
           } catch (e: any) {
@@ -144,6 +155,8 @@ export async function POST(req: Request) {
         if (!genResult) throw lastErr
       } else throw err
     }
+    await recordUsage(user.id, 'generate', usedProvider, usedModel, genResult.usage)
+
     // Jalur keluar dikunci: cuma VBA valid yang boleh lanjut. Selain itu (penolakan, terjemahan, kode bahasa lain,
     // perintah berbahaya) nggak disimpan dan NGGAK memotong kredit.
     const extracted = extractVba(genResult.text)

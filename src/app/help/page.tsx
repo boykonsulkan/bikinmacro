@@ -1,4 +1,5 @@
 import { Book, MessageSquare, Code, Mail, MessageCircle } from 'lucide-react'
+import { founderMailto } from '@/lib/links'
 
 export default function HelpPage() {
   return (
@@ -13,18 +14,18 @@ export default function HelpPage() {
           <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center rounded-full mb-4">
             <Mail size={24} />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">Email</h3>
-          <p className="text-sm text-muted mb-4">Kirim email ke kami dan kami akan membalas secepatnya.</p>
-          <a href="mailto:support@bikinmacro.com" className="text-primary font-bold hover:underline">support@bikinmacro.com</a>
+          <h3 className="text-xl font-bold text-foreground mb-2">Tanya ke founder</h3>
+          <p className="text-sm text-muted mb-4">Pertanyaan, saran, atau macro yang belum jalan? Kirim langsung ke founder, dibalas secepatnya.</p>
+          <a href={founderMailto('Pertanyaan tentang BikinMacro')} className="text-primary font-bold hover:underline">Tulis ke founder</a>
         </div>
 
         <div className="bg-card border border-border p-8 rounded-2xl flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center rounded-full mb-4">
             <MessageCircle size={24} />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">Discord</h3>
-          <p className="text-sm text-muted mb-4">Gabung komunitas Discord kami untuk diskusi dan bantuan langsung.</p>
-          <a href="#" className="text-primary font-bold hover:underline">Join Discord Server</a>
+          <h3 className="text-xl font-bold text-foreground mb-2">Akun atau pembayaran</h3>
+          <p className="text-sm text-muted mb-4">Paket belum aktif, masalah pembayaran, atau mau menghapus akun dan datamu? Tulis di sini.</p>
+          <a href={founderMailto('Masalah akun atau pembayaran BikinMacro')} className="text-primary font-bold hover:underline">Hubungi founder</a>
         </div>
       </div>
 

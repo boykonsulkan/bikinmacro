@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, CreditCard, Home, SlidersHorizontal, MessageSquare, Package, Mail, ShieldAlert, Activity } from 'lucide-react'
+import { LayoutDashboard, Users, CreditCard, Home, SlidersHorizontal, MessageSquare, Package, Mail, ShieldAlert, Activity, Wallet } from 'lucide-react'
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -15,6 +15,7 @@ export default function Sidebar() {
     { href: '/north/orders', label: 'Orders', icon: Package },
     { href: '/north/email', label: 'Email', icon: Mail },
     { href: '/north/ai-log', label: 'Log AI', icon: ShieldAlert },
+    { href: '/north/ai-cost', label: 'Biaya AI', icon: Wallet },
     { href: '/north/feedback', label: 'Feedback', icon: MessageSquare },
     { href: '/north/settings', label: 'Settings', icon: SlidersHorizontal },
   ]

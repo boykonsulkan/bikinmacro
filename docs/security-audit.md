@@ -42,3 +42,33 @@ kode. Skrip yang bisa diulang: `node scripts/audit-rls.js`.
 - Tidak ada pemantauan galat dan alert (hanya log Vercel).
 - Tidak ada alur hapus akun mandiri (manual lewat Bantuan).
 - Lima kerentanan tersisa di `npm audit` hanya di alat pengembangan (tidak ikut ter-deploy).
+
+## Status setelah langkah 1 sampai 3 (diverifikasi ulang di database hidup)
+
+- Deploy dan `scripts/security_hardening.sql` sudah dijalankan. `node scripts/audit-rls.js` tidak lagi menemukan celah kritis:
+  akun biasa tidak bisa mengubah role, paket, atau kuota; tidak bisa menulis ke `generations`, `generation_chats`, `payments`.
+- Pendaftaran publik ditutup (`Signups not allowed`). Admin tersisa hanya `boy.konsulkan@gmail.com`.
+- Tersisa (rendah, disengaja): `admin_settings` terbaca pengguna login. Jangan taruh rahasia di `system_context`.
+
+## Anggaran dan pelacakan biaya AI
+
+Angka diatur di `src/lib/ai/cost.ts` (`AI_BUDGET`):
+
+| Pengaman | Nilai | Keterangan |
+|---|---|---|
+| Batas keras di penyedia | USD 10 per bulan (sekitar Rp165.000) | Atur di dashboard penyedia, misalnya limit kredit pada API key OpenRouter. Ini satu-satunya pengaman yang tidak bergantung pada kode kita. |
+| Anggaran aplikasi (pemutus) | USD 8 per bulan (sekitar Rp132.000) | Lewat angka ini generate dan chat berhenti untuk pengguna biasa (admin lolos). Sengaja di bawah batas keras supaya aplikasi berhenti lebih dulu. |
+| Peringatan di admin | 70% anggaran | Kartu berubah kuning di `/north/ai-cost`. |
+
+Dasar angka: satu generate dengan gpt-4o-mini sekitar Rp16, jadi 10 penguji yang memakai jatah penuh Starter (20 macro dan
+200 chat per orang) paling banyak sekitar Rp60.000 per bulan. Anggaran di atas memberi ruang sekitar 2 kali lipat.
+
+Aktifkan dengan menjalankan `scripts/ai_usage_schema.sql` di Supabase. Sebelum itu pencatatan dan pemutus nonaktif
+(fail-open) dan halaman admin menampilkan banner. Harga per model adalah perkiraan; model yang belum dikenal dihitung mahal.
+Tagihan asli tetap yang di dashboard penyedia.
+
+## Kontak
+
+Belum ada kotak masuk dukungan. Semua tautan kontak (Bantuan, Privasi, Syarat) membuka email ke `founder@pelajarin.id`
+dengan subjek terisi (`founderMailto` di `src/lib/links.ts`). Tautan Discord yang kosong dan `support@bikinmacro.com`
+dihapus dari halaman Bantuan.
