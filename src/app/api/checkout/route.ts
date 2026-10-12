@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { checkKeys } from '@/lib/midtrans/keys'
+import { serviceClient } from '@/lib/orders/server'
 import { PLAN_RANK, PURCHASE_BLOCK_MESSAGE, purchaseState } from '@/lib/invites/rules'
 const midtransClient = require('midtrans-client')
 
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
     const transaction = await snap.createTransaction(parameter)
 
     // Save pending payment to DB
-    await supabase.from('payments').insert({
+    await serviceClient().from('payments').insert({
       user_id: user.id,
       plan: plan,
       amount: amount,
@@ -124,6 +125,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Checkout error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal membuat pembayaran. Coba lagi atau hubungi admin.' }, { status: 500 })
   }
 }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/utils/supabase/server'
+import { serviceClient } from '@/lib/orders/server'
 
 export async function manualUpgrade(formData: FormData) {
   const supabase = await createClient()
@@ -18,9 +19,15 @@ export async function manualUpgrade(formData: FormData) {
   if (!email || !plan) {
     return { error: 'Email and Plan are required' }
   }
+  if (!['addon', 'starter', 'pro'].includes(plan)) {
+    return { error: 'Plan tidak valid' }
+  }
+
+  // Admin sudah diverifikasi di atas. Penulisan ke users dan payments lewat service role (klien nggak boleh menulisnya).
+  const db = serviceClient()
 
   // Find user by email
-  const { data: targetUser, error: findError } = await supabase
+  const { data: targetUser, error: findError } = await db
     .from('users')
     .select('id, credits_limit')
     .eq('email', email)
@@ -42,7 +49,7 @@ export async function manualUpgrade(formData: FormData) {
     resetAt = undefined as any
     amount = 25000
   } else {
-    const { data: planSettings } = await supabase.from('plan_settings').select('credits_limit').eq('plan', plan).single()
+    const { data: planSettings } = await db.from('plan_settings').select('credits_limit').eq('plan', plan).single()
     if (planSettings) {
       newLimit = planSettings.credits_limit
     }
@@ -55,10 +62,10 @@ export async function manualUpgrade(formData: FormData) {
   if (newPlan) updateData.plan = newPlan
   if (resetAt) updateData.reset_at = resetAt
 
-  await supabase.from('users').update(updateData).eq('id', targetUser.id)
+  await db.from('users').update(updateData).eq('id', targetUser.id)
 
   // Log payment as manual
-  await supabase.from('payments').insert({
+  await db.from('payments').insert({
     user_id: targetUser.id,
     plan: plan,
     amount: amount,

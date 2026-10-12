@@ -7,7 +7,8 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { AI_LIMITS, REJECTION_MESSAGES, extractVba, scanVba } from '@/lib/ai/guard'
 import { buildGenerateSystem, buildGenerateUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
-import { checkAbuse, logRejection } from '@/lib/ai/server'
+import { checkAbuse, logRejection, reserveCredit } from '@/lib/ai/server'
+import { serviceClient } from '@/lib/orders/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -44,6 +45,8 @@ function getFallbackProvider(): string {
 
 export async function POST(req: Request) {
   const startedAt = Date.now()
+  // Kredit yang sudah dipesan; dikembalikan kalau generate gagal atau balasannya ditolak.
+  let releaseCredit: (() => Promise<void>) | null = null
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -94,6 +97,13 @@ export async function POST(req: Request) {
       if (!abuse.ok) return NextResponse.json({ error: abuse.error }, { status: abuse.status })
     }
 
+    // Pesan kredit secara atomik SEBELUM memanggil AI: permintaan paralel nggak bisa melewati kuota bersamaan.
+    if (!isAdmin) {
+      const reservation = await reserveCredit(user.id, settings?.credits_limit ?? profile.credits_limit)
+      if (!reservation.ok) return NextResponse.json({ error: 'Quota exhausted' }, { status: 402 })
+      releaseCredit = reservation.release
+    }
+
     // Build system prompt with optional admin context
     const contextSection = systemContext
       ? `\n\nKonteks tambahan dari admin:\n${systemContext}`
@@ -138,27 +148,30 @@ export async function POST(req: Request) {
     // perintah berbahaya) nggak disimpan dan NGGAK memotong kredit.
     const extracted = extractVba(genResult.text)
     if (!extracted.ok) {
+      await releaseCredit?.()
       await logRejection(user.id, 'generate', extracted.reason, prompt)
       return NextResponse.json({ error: REJECTION_MESSAGES[extracted.reason], code: extracted.reason }, { status: 422 })
     }
     const scan = scanVba(extracted.code)
     if (scan.blocked.length > 0) {
+      await releaseCredit?.()
       await logRejection(user.id, 'generate', 'unsafe', prompt, scan.blocked.join('; '))
       return NextResponse.json({ error: REJECTION_MESSAGES.unsafe, code: 'unsafe', detail: scan.blocked }, { status: 422 })
     }
     const vbaCode = extracted.code
 
-    // Update quota (skip for admins)
-    if (!isAdmin) {
-      await supabase.from('users').update({ credits_used: profile.credits_used + 1 }).eq('id', user.id)
-    }
-
-    // Save generation and return its id for chat
-    const { data: inserted } = await supabase
+    // Kredit sudah dipesan sebelum memanggil AI. Penulisan lewat service role: klien nggak boleh menulis tabel ini.
+    const { data: inserted, error: insertError } = await serviceClient()
       .from('generations')
-      .insert({ user_id: user.id, prompt, category, output_vba: vbaCode })
+      .insert({ user_id: user.id, prompt, category: typeof category === 'string' ? category.slice(0, 60) : null, output_vba: vbaCode })
       .select('id')
       .single()
+    if (insertError || !inserted) {
+      await releaseCredit?.()
+      console.error('Gagal menyimpan generasi:', insertError?.message)
+      return NextResponse.json({ error: 'Gagal menyimpan hasil. Coba lagi.' }, { status: 500 })
+    }
+    releaseCredit = null
 
     await trackEvent(user.id, 'generate_success', { category: String(category ?? ''), prompt_len: String(prompt).length, ms: Date.now() - startedAt })
 
@@ -174,6 +187,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error in /api/generate:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    await releaseCredit?.().catch(() => {})
+    return NextResponse.json({ error: 'Gagal membuat macro. Coba lagi sebentar lagi.' }, { status: 500 })
   }
 }

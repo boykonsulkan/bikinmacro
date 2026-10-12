@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { isClientEvent, sanitizeProps } from '@/lib/events/names'
 import { trackEvent } from '@/lib/events/server'
+import { rateLimit } from '@/lib/rate'
 
 /** POST /api/events { name, props }: kejadian dari browser. Hanya nama yang ada di daftar putih yang diterima. */
 export async function POST(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!rateLimit(`events:${user.id}`, 120, 60_000)) return NextResponse.json({ error: 'Terlalu cepat' }, { status: 429 })
 
   const raw = await req.text()
   if (raw.length > 2000) return NextResponse.json({ error: 'Terlalu besar' }, { status: 413 })

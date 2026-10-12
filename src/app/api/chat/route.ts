@@ -8,6 +8,7 @@ import { AI_LIMITS, EXPLAIN_PREFIX, REJECTION_MESSAGES, extractExplanation, extr
 import { buildChatSystem, buildChatUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection } from '@/lib/ai/server'
+import { serviceClient } from '@/lib/orders/server'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
 // sudah dicabut OpenRouter. Cek tersedianya lewat https://openrouter.ai/api/v1/models.
@@ -194,7 +195,7 @@ export async function POST(req: Request) {
           { status: 422 },
         )
       }
-      await supabase.from('generation_chats').insert([
+      await serviceClient().from('generation_chats').insert([
         { generation_id, user_id: user.id, role: 'user', content: message.trim() },
         { generation_id, user_id: user.id, role: 'assistant', content: `${EXPLAIN_PREFIX} ${explained.text}` },
       ])
@@ -231,13 +232,13 @@ export async function POST(req: Request) {
     const vbaCode = extracted.code
 
     // Save user message + assistant description to chat history
-    await supabase.from('generation_chats').insert([
+    await serviceClient().from('generation_chats').insert([
       { generation_id, user_id: user.id, role: 'user', content: message.trim() },
       { generation_id, user_id: user.id, role: 'assistant', content: changeDescription }
     ])
 
     // Update generation with latest code
-    await supabase.from('generations').update({ output_vba: vbaCode }).eq('id', generation_id)
+    await serviceClient().from('generations').update({ output_vba: vbaCode }).eq('id', generation_id).eq('user_id', user.id)
     await trackEvent(user.id, 'chat_success', { n: (chatCount ?? 0) + 1 })
 
     return NextResponse.json({
@@ -253,6 +254,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error in /api/chat:', error)
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal memproses permintaan. Coba lagi sebentar lagi.' }, { status: 500 })
   }
 }

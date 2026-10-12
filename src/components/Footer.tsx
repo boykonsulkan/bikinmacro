@@ -18,6 +18,12 @@ export default function Footer() {
           <Link href="/pricing" className="hover:text-foreground transition-colors font-medium">
             Harga
           </Link>
+          <Link href="/privasi" className="hover:text-foreground transition-colors font-medium">
+            Privasi
+          </Link>
+          <Link href="/syarat" className="hover:text-foreground transition-colors font-medium">
+            Syarat
+          </Link>
         </div>
 
         <p className="text-muted text-xs">

@@ -62,3 +62,46 @@ export async function logRejection(
     /* abaikan */
   }
 }
+
+type CreditDb = Pick<ReturnType<typeof serviceClient>, 'from'>
+
+export type CreditReservation = { ok: true; release: () => Promise<void> } | { ok: false }
+
+/**
+ * Pesan 1 kredit SEBELUM memanggil AI, secara atomik (compare-and-swap pada credits_used). Permintaan paralel nggak
+ * bisa lolos bersamaan: yang kalah balapan membaca ulang dan ditolak kalau kuota sudah habis. Kalau generate gagal
+ * (AI error, balasan ditolak), panggil release() supaya kredit dikembalikan.
+ */
+export async function reserveCredit(userId: string, limit: number, db: CreditDb = serviceClient()): Promise<CreditReservation> {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const { data } = await db.from('users').select('credits_used').eq('id', userId).single()
+    const used = (data?.credits_used as number | undefined) ?? 0
+    if (used >= limit) return { ok: false }
+    const { data: updated } = await db
+      .from('users')
+      .update({ credits_used: used + 1 })
+      .eq('id', userId)
+      .eq('credits_used', used)
+      .select('credits_used')
+    if (updated && updated.length === 1) {
+      return {
+        ok: true,
+        release: async () => {
+          for (let i = 0; i < 6; i++) {
+            const { data: now } = await db.from('users').select('credits_used').eq('id', userId).single()
+            const current = (now?.credits_used as number | undefined) ?? 0
+            if (current <= 0) return
+            const { data: done } = await db
+              .from('users')
+              .update({ credits_used: current - 1 })
+              .eq('id', userId)
+              .eq('credits_used', current)
+              .select('credits_used')
+            if (done && done.length === 1) return
+          }
+        },
+      }
+    }
+  }
+  return { ok: false }
+}

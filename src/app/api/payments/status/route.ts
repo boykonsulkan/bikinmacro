@@ -23,6 +23,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ status: payment.status, plan: payment.plan })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Gagal memeriksa status pembayaran.' }, { status: 500 })
   }
 }

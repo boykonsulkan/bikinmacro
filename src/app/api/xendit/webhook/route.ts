@@ -6,7 +6,11 @@ export async function POST(req: Request) {
     const callbackToken = req.headers.get('x-callback-token')
     const expectedToken = process.env.XENDIT_CALLBACK_TOKEN
 
-    if (expectedToken && callbackToken !== expectedToken) {
+    if (!expectedToken) {
+      console.error('XENDIT_CALLBACK_TOKEN belum diatur: webhook Xendit ditolak (aman secara default)')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    if (callbackToken !== expectedToken) {
       console.error('Invalid Xendit callback token')
       return NextResponse.json({ error: 'Invalid callback token' }, { status: 401 })
     }

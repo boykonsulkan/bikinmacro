@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { AI_LIMITS, REJECTION_MESSAGES, scanVba } from '@/lib/ai/guard'
 import { buildXlsm } from '@/lib/xlsm/build'
 import { trackEvent } from '@/lib/events/server'
+import { rateLimit } from '@/lib/rate'
 
 // Butuh Buffer dan pustaka biner, jadi harus runtime Node (bukan edge).
 export const runtime = 'nodejs'
@@ -15,6 +16,10 @@ export async function GET(req: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!rateLimit(`xlsm:${user.id}`, 10, 60_000)) {
+    return NextResponse.json({ error: 'Terlalu sering mengunduh. Tunggu sebentar lalu coba lagi.' }, { status: 429 })
+  }
 
   const id = new URL(req.url).searchParams.get('generation_id')
   if (!id) return NextResponse.json({ error: 'generation_id wajib diisi' }, { status: 400 })

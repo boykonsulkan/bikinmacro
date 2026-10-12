@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate";
 
 export async function POST(request: Request) {
   try {
@@ -13,8 +14,15 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!rateLimit(`feedback:${user.id}`, 5, 60_000)) {
+      return NextResponse.json({ error: "Terlalu cepat. Coba lagi sebentar lagi." }, { status: 429 });
+    }
+
     const { category, content, email } = await request.json();
 
+    if (typeof category !== "string" || typeof content !== "string" || content.length > 3000 || category.length > 40) {
+      return NextResponse.json({ error: "Isi masukan terlalu panjang atau formatnya salah." }, { status: 400 });
+    }
     if (!category || !content) {
       return NextResponse.json(
         { error: "Category and content are required." },
@@ -26,7 +34,7 @@ export async function POST(request: Request) {
       .from("feedback")
       .insert({
         user_id: user.id,
-        email: email || user.email,
+        email: user.email ?? (typeof email === "string" ? email.slice(0, 200) : null),
         category,
         content,
         status: "pending"
