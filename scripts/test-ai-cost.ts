@@ -92,3 +92,115 @@ test('ringkasan: pemakaian besar memicu level exceeded', () => {
 })
 
 console.log(`\n${passed} tes lolos`)
+
+// ---------- notifikasi anggaran ke admin ----------
+import Module from 'node:module'
+import { AI_BUDGET as B, budgetAlert } from '../src/lib/ai/cost'
+
+const resolver = Module as unknown as { _resolveFilename: (...a: unknown[]) => string }
+const origResolve = resolver._resolveFilename
+resolver._resolveFilename = function (request: unknown, ...rest: unknown[]) {
+  if (request === 'server-only') return require.resolve('./empty-module.cjs')
+  return origResolve.call(this, request, ...rest)
+}
+
+async function alertTests() {
+  const { maybeSendBudgetAlert, resetAlertMemo } = await import('../src/lib/ai/alert')
+  const clock = new Date('2026-10-20T05:00:00Z')
+  const at = (ratio: number) => B.monthlyUsd * ratio
+  const mk = (over: Record<string, unknown> = {}) => {
+    const calls = { sent: [] as string[], logs: [] as { template: string; ok: boolean }[], dedupeChecks: 0 }
+    const deps = {
+      admins: async () => ['a@x.id', 'b@x.id'],
+      alreadySent: async () => {
+        calls.dedupeChecks++
+        return false as boolean | null
+      },
+      send: async (to: string) => {
+        calls.sent.push(to)
+        return { ok: true, id: 'id-' + to }
+      },
+      log: async (row: { template: string; ok: boolean }) => {
+        calls.logs.push(row)
+      },
+      ...over,
+    }
+    return { calls, deps }
+  }
+
+  test('isi email: di bawah 80% tidak ada notifikasi', () => {
+    assert.equal(budgetAlert(at(0.79), clock), null)
+  })
+  test('isi email 80%: subjek, angka, dan tautan admin', () => {
+    const a = budgetAlert(at(0.82), clock)!
+    assert.equal(a.template, 'alert_anggaran_80')
+    assert.ok(a.subject.includes('82%'))
+    assert.ok(a.text.includes('https://bikinmacro.my.id/north/ai-cost') && a.text.includes('2026-10') && a.text.includes('Belum ada yang dihentikan'))
+    assert.ok(!/[\u2013\u2014]/.test(a.subject + a.text))
+  })
+  test('isi email 100%: memberi tahu generate dihentikan dan cara melanjutkan', () => {
+    const a = budgetAlert(at(1.05), clock)!
+    assert.equal(a.template, 'alert_anggaran_100')
+    assert.ok(a.text.includes('DIHENTIKAN') && a.text.includes('AI_BUDGET.monthlyUsd'))
+  })
+
+  resetAlertMemo()
+  const first = mk()
+  const sent1 = await maybeSendBudgetAlert(at(0.85), first.deps, clock)
+  test('di atas 80%: email dikirim ke SEMUA admin dan dicatat', () => {
+    assert.deepEqual(sent1, ['a@x.id', 'b@x.id'])
+    assert.equal(first.calls.logs.length, 2)
+    assert.ok(first.calls.logs.every((l) => l.template === 'alert_anggaran_80' && l.ok))
+  })
+  const again = await maybeSendBudgetAlert(at(0.9), first.deps, clock)
+  test('panggilan berikutnya di instance yang sama: tidak kirim lagi (tanpa query ulang)', () => {
+    assert.deepEqual(again, [])
+    assert.equal(first.calls.dedupeChecks, 1)
+    assert.equal(first.calls.sent.length, 2)
+  })
+  const hundred = await maybeSendBudgetAlert(at(1.02), first.deps, clock)
+  test('melewati 100%: email tingkat kedua tetap dikirim (tingkat berbeda)', () => {
+    assert.equal(hundred.length, 2)
+    assert.ok(first.calls.logs.some((l) => l.template === 'alert_anggaran_100'))
+  })
+
+  resetAlertMemo()
+  const done = mk({ alreadySent: async () => true })
+  test('sudah pernah dikirim bulan ini (di database): tidak dikirim lagi', async () => {
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.9), done.deps, clock), [])
+    assert.equal(done.calls.sent.length, 0)
+  })
+  resetAlertMemo()
+  const unknown = mk({ alreadySent: async () => null })
+  test('log nggak bisa dicek: tidak kirim sama sekali (hindari spam)', async () => {
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.9), unknown.deps, clock), [])
+    assert.equal(unknown.calls.sent.length, 0)
+  })
+  resetAlertMemo()
+  const noAdmin = mk({ admins: async () => [] })
+  test('tidak ada admin: aman, tidak error', async () => {
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.9), noAdmin.deps, clock), [])
+  })
+  resetAlertMemo()
+  const failing = mk({ send: async () => ({ ok: false, error: 'HTTP 403' }) })
+  test('gagal kirim ke semua: tidak ditandai terkirim, boleh dicoba lagi', async () => {
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.9), failing.deps, clock), [])
+    assert.ok(failing.calls.logs.every((l) => !l.ok))
+    const retry = mk()
+    assert.equal((await maybeSendBudgetAlert(at(0.9), retry.deps, clock)).length, 2)
+  })
+  resetAlertMemo()
+  test('error tak terduga di dalam tidak melempar ke pemanggil', async () => {
+    const boom = mk({ admins: async () => { throw new Error('db mati') } })
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.9), boom.deps, clock), [])
+  })
+  test('aman di bawah 80%: tidak menyentuh database sama sekali', async () => {
+    resetAlertMemo()
+    const quiet = mk()
+    assert.deepEqual(await maybeSendBudgetAlert(at(0.5), quiet.deps, clock), [])
+    assert.equal(quiet.calls.dedupeChecks, 0)
+  })
+  await new Promise((r) => setTimeout(r, 50)) // beri kesempatan tes async di atas selesai
+}
+
+alertTests().then(() => console.log(`\n${passed} tes lolos (termasuk notifikasi)`))

@@ -1,6 +1,7 @@
 import 'server-only'
 import { serviceClient } from '@/lib/orders/server'
 import { AI_BUDGET, estimateCostUsd, monthStartIso } from './cost'
+import { maybeSendBudgetAlert } from './alert'
 
 type Usage = { inputTokens?: number; outputTokens?: number } | undefined
 
@@ -11,6 +12,11 @@ export async function recordUsage(userId: string, kind: 'generate' | 'chat', pro
     const output = Math.max(0, Math.round(usage?.outputTokens ?? 0))
     const { error } = await serviceClient().from('ai_usage').insert({ user_id: userId, kind, provider, model, input_tokens: input, output_tokens: output })
     if (!error && cache) cache.usd += estimateCostUsd(model, input, output)
+    if (!error) {
+      // Notifikasi ke admin kalau biaya bulan ini melewati 80% atau 100% anggaran (sekali per tingkat per bulan).
+      const spend = cache ? cache.usd : await monthSpendUsd()
+      if (spend !== null && spend >= AI_BUDGET.monthlyUsd * AI_BUDGET.warnRatio) await maybeSendBudgetAlert(spend)
+    }
     if (error && error.code !== '42P01' && error.code !== 'PGRST205') console.warn('recordUsage:', error.message)
   } catch (e) {
     console.warn('recordUsage gagal:', e instanceof Error ? e.message : e)

@@ -9,8 +9,8 @@ export const AI_BUDGET = {
   monthlyUsd: 8,
   /** Batas keras yang disarankan di dashboard penyedia (OpenRouter: limit kredit pada API key). */
   providerCapUsd: 10,
-  /** Di atas rasio ini halaman admin menampilkan peringatan. */
-  warnRatio: 0.7,
+  /** Di atas rasio ini halaman admin menampilkan peringatan dan email notifikasi dikirim ke admin. */
+  warnRatio: 0.8,
   usdToIdr: 16500,
 } as const
 
@@ -134,5 +134,34 @@ export function summarizeUsage(rows: UsageRow[], now: Date): UsageSummary {
     perModel: [...models.values()].sort((a, b) => b.usd - a.usd),
     perUser: [...users.entries()].map(([userId, v]) => ({ userId, ...v })).sort((a, b) => b.usd - a.usd).slice(0, 10),
     perDay,
+  }
+}
+
+export type BudgetAlert = { template: 'alert_anggaran_80' | 'alert_anggaran_100'; subject: string; text: string }
+
+const fmtUsd = (usd: number) => `$${usd.toFixed(2)}`
+const fmtIdr = (usd: number) => `Rp${Math.round(toIdr(usd)).toLocaleString('id-ID')}`
+
+/**
+ * Isi email peringatan ke admin. null kalau biaya masih aman. Dua tingkat: mendekati anggaran (80%) dan anggaran habis.
+ */
+export function budgetAlert(monthUsd: number, now: Date, siteUrl = 'https://bikinmacro.my.id'): BudgetAlert | null {
+  const level = budgetLevel(monthUsd)
+  if (level === 'ok') return null
+  const pct = Math.round((monthUsd / AI_BUDGET.monthlyUsd) * 100)
+  const link = `${siteUrl.replace(/\/+$/, '')}/north/ai-cost`
+  const month = wibDay(now.getTime()).slice(0, 7)
+  const usage = `Perkiraan biaya AI bulan ${month}: ${fmtUsd(monthUsd)} (${fmtIdr(monthUsd)}), ${pct}% dari anggaran ${fmtUsd(AI_BUDGET.monthlyUsd)} (${fmtIdr(AI_BUDGET.monthlyUsd)}).`
+  if (level === 'warn') {
+    return {
+      template: 'alert_anggaran_80',
+      subject: `[BikinMacro] Biaya AI sudah ${pct}% dari anggaran bulan ini`,
+      text: `${usage}\n\nBelum ada yang dihentikan. Kalau mencapai anggaran, generate dan chat berhenti otomatis untuk pengguna biasa.\n\nCek siapa dan model apa yang paling banyak memakai: ${link}\n\nEmail ini hanya dikirim sekali per bulan untuk tingkat ini. Angkanya perkiraan dari daftar harga penyedia; tagihan asli ada di dashboard penyedia.`,
+    }
+  }
+  return {
+    template: 'alert_anggaran_100',
+    subject: '[BikinMacro] Anggaran AI bulan ini habis, generate dihentikan',
+    text: `${usage}\n\nGenerate dan chat sekarang DIHENTIKAN untuk pengguna biasa (admin tetap bisa). Pengguna melihat pesan bahwa layanan sedang dibatasi.\n\nUntuk melanjutkan, naikkan angka anggaran di src/lib/ai/cost.ts (AI_BUDGET.monthlyUsd), pastikan batas keras di dashboard penyedia ikut disesuaikan, lalu deploy ulang. Atau tunggu bulan depan.\n\nDetail pemakaian: ${link}`,
   }
 }

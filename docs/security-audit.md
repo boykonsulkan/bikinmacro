@@ -58,7 +58,7 @@ Angka diatur di `src/lib/ai/cost.ts` (`AI_BUDGET`):
 |---|---|---|
 | Batas keras di penyedia | USD 10 per bulan (sekitar Rp165.000) | Atur di dashboard penyedia, misalnya limit kredit pada API key OpenRouter. Ini satu-satunya pengaman yang tidak bergantung pada kode kita. |
 | Anggaran aplikasi (pemutus) | USD 8 per bulan (sekitar Rp132.000) | Lewat angka ini generate dan chat berhenti untuk pengguna biasa (admin lolos). Sengaja di bawah batas keras supaya aplikasi berhenti lebih dulu. |
-| Peringatan di admin | 70% anggaran | Kartu berubah kuning di `/north/ai-cost`. |
+| Peringatan | 80% anggaran | Kartu kuning di `/north/ai-cost` dan email ke semua admin (sekali per bulan). Saat anggaran habis dikirim satu email lagi. |
 
 Dasar angka: satu generate dengan gpt-4o-mini sekitar Rp16, jadi 10 penguji yang memakai jatah penuh Starter (20 macro dan
 200 chat per orang) paling banyak sekitar Rp60.000 per bulan. Anggaran di atas memberi ruang sekitar 2 kali lipat.
