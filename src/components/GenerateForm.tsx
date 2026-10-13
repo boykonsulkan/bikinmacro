@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRight, ChevronDown, FileSpreadsheet } from 'lucide-react'
-import { codeToHtml } from 'shiki'
+import { highlightVba } from '@/lib/highlight'
 import MacroChat from './MacroChat'
 import UsageGuide from './UsageGuide'
 import FileAttach from './FileAttach'
@@ -94,7 +94,7 @@ export default function GenerateForm({
   useEffect(() => {
     if (!resume) return
     let cancelled = false
-    codeToHtml(resume.code, { lang: 'vb', theme: 'github-dark' }).then((html) => {
+    highlightVba(resume.code).then((html) => {
       if (!cancelled) setOutputHtml(html)
     })
     return () => {
@@ -159,7 +159,7 @@ export default function GenerateForm({
       if (data.generation_id) rememberGeneration(data.generation_id)
       setChatMax(data.max_chat_per_generation ?? maxChatPerGeneration)
 
-      const html = await codeToHtml(data.vba_code, { lang: 'vb', theme: 'github-dark' })
+      const html = await highlightVba(data.vba_code)
       setOutputHtml(html)
       setViewMode('chat')
 

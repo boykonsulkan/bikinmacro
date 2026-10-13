@@ -1,6 +1,7 @@
 import 'server-only'
 import { createClient } from '@supabase/supabase-js'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { cache } from 'react'
 import { createClient as createSessionClient } from '@/utils/supabase/server'
 
 /** Client dengan service role. HANYA dipakai di server. Melewati RLS, jadi cek akses sendiri. */
@@ -90,7 +91,7 @@ export async function getOrderByAccess(code: string, token: string | null) {
   return order as OrderRow
 }
 
-/** Admin yang sedang login (role = admin), atau null. Dipakai halaman, server action, dan route admin. */
+/** Admin yang sedang login (role = admin), atau null. Pemeriksaan KETAT (tanya server Auth): dipakai server action dan route API. */
 export async function getAdminUser() {
   const supabase = await createSessionClient()
   const {
@@ -100,6 +101,21 @@ export async function getAdminUser() {
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
   return profile?.role === 'admin' ? user : null
 }
+
+/**
+ * Admin untuk RENDER halaman (hanya membaca). Identitas diambil dari JWT yang tanda tangannya diverifikasi (getClaims),
+ * jadi nggak perlu satu perjalanan ke server Auth lagi, dan hasilnya dipakai bersama dalam satu permintaan (cache).
+ * Sesi yang dicabut atau diblokir sudah ditolak di middleware (getUser penuh), dan semua aksi yang mengubah data
+ * tetap memakai getAdminUser() yang ketat.
+ */
+export const getAdminForPage = cache(async () => {
+  const supabase = await createSessionClient()
+  const { data } = await supabase.auth.getClaims()
+  const id = data?.claims?.sub
+  if (!id) return null
+  const { data: profile } = await supabase.from('users').select('role').eq('id', id).single()
+  return profile?.role === 'admin' ? { id, email: data?.claims?.email as string | undefined } : null
+})
 
 /**
  * Apakah tabel ada? Pakai query GET biasa. JANGAN pakai query HEAD (select(..., { head: true })):

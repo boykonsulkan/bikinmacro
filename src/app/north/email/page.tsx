@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { checkSenderDomain, emailConfig } from '@/lib/email/resend'
 import { EMAIL_LIMITS } from '@/lib/email/config'
-import { getAdminUser, serviceClient } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { formatDateTime } from '@/components/pesan/format'
 import { PLAN_LABEL, inviteState } from '@/lib/invites/rules'
 import EmailForm from './EmailForm'
@@ -10,7 +10,7 @@ import { revokeInviteAction } from './invite-actions'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminEmailPage() {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
 
   const cfg = emailConfig()
   const domain = cfg.configured ? await checkSenderDomain() : null

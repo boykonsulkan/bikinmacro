@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { format } from 'date-fns'
 import { createClient } from '@/utils/supabase/server'
-import { getAdminUser, serviceClient } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { isBanned } from '@/lib/admin/users'
 import UsersTable from './UsersTable'
 import type { UserRowView } from './UsersTable'
@@ -9,14 +9,18 @@ import type { UserRowView } from './UsersTable'
 export const dynamic = 'force-dynamic'
 
 export default async function NorthUsersPage() {
-  const admin = await getAdminUser()
+  const admin = await getAdminForPage()
   if (!admin) redirect('/north/login')
 
   const supabase = await createClient()
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, email, role, plan, credits_used, credits_limit, created_at, generations (id), generation_chats (id)')
-    .order('created_at', { ascending: false })
+  // Daftar pengguna dan status blokir (Supabase Auth) diambil bersamaan, bukan berurutan.
+  const [{ data: users, error }, list] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, email, role, plan, credits_used, credits_limit, created_at, generations (id), generation_chats (id)')
+      .order('created_at', { ascending: false }),
+    serviceClient().auth.admin.listUsers({ page: 1, perPage: 1000 }),
+  ])
 
   if (error) {
     return <div className="text-red-500 p-6">Error loading users: {error.message}</div>
@@ -24,7 +28,6 @@ export default async function NorthUsersPage() {
 
   // Status nonaktif ada di Supabase Auth (banned_until), bukan di tabel users.
   const banned = new Map<string, string | null>()
-  const list = await serviceClient().auth.admin.listUsers({ page: 1, perPage: 1000 })
   for (const u of list.data?.users ?? []) banned.set(u.id, u.banned_until ?? null)
 
   const rows: UserRowView[] = (users ?? []).map((u) => ({

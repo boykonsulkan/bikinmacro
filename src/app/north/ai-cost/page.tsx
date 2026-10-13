@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getAdminUser, serviceClient, tableExists } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { AI_BUDGET, monthStartIso, summarizeUsage, toIdr } from '@/lib/ai/cost'
 import type { UsageRow } from '@/lib/ai/cost'
 
@@ -16,17 +16,15 @@ const LEVEL = {
 } as const
 
 export default async function AdminAiCostPage() {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
 
   const db = serviceClient()
   const now = new Date()
-  const ready = await tableExists(db, 'ai_usage')
   const since = new Date(Math.min(new Date(monthStartIso(now)).getTime(), now.getTime() - 14 * 86400000)).toISOString()
 
-  const { data } = ready
-    ? await db.from('ai_usage').select('user_id, created_at, kind, provider, model, input_tokens, output_tokens').gte('created_at', since).limit(100000)
-    : { data: [] }
-  const summary = summarizeUsage((data ?? []) as UsageRow[], now)
+  const usage = await db.from('ai_usage').select('user_id, created_at, kind, provider, model, input_tokens, output_tokens').gte('created_at', since).limit(100000)
+  const ready = !usage.error // tabel belum dibuat = error
+  const summary = summarizeUsage((usage.data ?? []) as UsageRow[], now)
 
   const ids = summary.perUser.map((u) => u.userId)
   const emailById = new Map<string, string>()

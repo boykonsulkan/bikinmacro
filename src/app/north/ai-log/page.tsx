@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { AI_LIMITS, REJECTION_MESSAGES } from '@/lib/ai/guard'
-import { getAdminUser, serviceClient } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { formatDateTime } from '@/components/pesan/format'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +14,7 @@ const REASON_LABEL: Record<string, string> = {
 }
 
 export default async function AdminAiLogPage() {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
 
   const db = serviceClient()
   const { data: rows, error } = await db

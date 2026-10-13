@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { ORDER_LIMITS, ORDER_STATUSES, PAYMENT_LABEL, PAYMENT_STATUSES, PLANS, STATUS_LABEL } from '@/lib/orders/config'
 import type { PlanKey } from '@/lib/orders/config'
-import { ORDER_COLUMNS, getAdminUser, serviceClient } from '@/lib/orders/server'
+import { ORDER_COLUMNS, getAdminForPage, serviceClient } from '@/lib/orders/server'
 import type { OrderFileRow, OrderMessageRow, OrderRow } from '@/lib/orders/server'
 import { formatBytes, formatDateTime } from '@/components/pesan/format'
 import { sendAdminMessage, updateOrder } from '../actions'
@@ -23,7 +23,7 @@ export default async function AdminOrderPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ error?: string; ok?: string }>
 }) {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
   const { id } = await params
   const { error, ok } = await searchParams
   if (!UUID_RE.test(id)) notFound()

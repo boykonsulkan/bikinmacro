@@ -2,7 +2,7 @@
 
 import { Fragment, useRef, useState, useEffect } from 'react'
 import { Send, MessageSquare, RefreshCw, Lock } from 'lucide-react'
-import { codeToHtml } from 'shiki'
+import { highlightVba } from '@/lib/highlight'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -93,7 +93,7 @@ export default function MacroChat({
       }
       setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
 
-      const html = await codeToHtml(data.vba_code, { lang: 'vb', theme: 'github-dark' })
+      const html = await highlightVba(data.vba_code)
       onCodeUpdate(data.vba_code, html)
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan.')

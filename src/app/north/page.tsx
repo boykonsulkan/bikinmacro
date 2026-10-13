@@ -4,11 +4,11 @@ import { Users, FileCode2, CreditCard, Activity, ArrowUpRight, BarChart3, Globe,
 export default async function NorthDashboard() {
   const supabase = await createClient()
 
-  // Fetch real data
-  const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true })
-  const { count: generationsCount } = await supabase.from('generations').select('*', { count: 'exact', head: true })
-  
-  const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'paid')
+  const [{ count: usersCount }, { count: generationsCount }, { data: payments }] = await Promise.all([
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('generations').select('*', { count: 'exact', head: true }),
+    supabase.from('payments').select('amount').eq('status', 'paid'),
+  ])
   const totalRevenue = payments?.reduce((acc, curr) => acc + curr.amount, 0) || 0
 
   return (

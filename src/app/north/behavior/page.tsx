@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getAdminUser, serviceClient, tableExists } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { buildReport } from '@/lib/events/report'
 import type { ChatRow, EventRow, GenerationRow, RejectionRow, UserRow } from '@/lib/events/report'
 import { formatDateTime } from '@/components/pesan/format'
@@ -18,7 +18,7 @@ function duration(minutes: number | null): string {
 }
 
 export default async function AdminBehaviorPage({ searchParams }: { searchParams: Promise<{ days?: string; admin?: string }> }) {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
   const params = await searchParams
   const days = RANGES.includes(Number(params.days)) ? Number(params.days) : 30
   const includeAdmins = params.admin === '1'
@@ -26,16 +26,18 @@ export default async function AdminBehaviorPage({ searchParams }: { searchParams
   const db = serviceClient()
   const now = new Date()
   const since = new Date(now.getTime() - days * 86400000).toISOString()
-  const eventsReady = await tableExists(db, 'events')
 
   const [users, generations, chats, events, rejections, authUsers] = await Promise.all([
     db.from('users').select('id, email, plan, role, created_at').limit(2000),
     db.from('generations').select('id, user_id, created_at, category, prompt').gte('created_at', since).order('created_at', { ascending: false }).limit(5000),
     db.from('generation_chats').select('generation_id, user_id, role, created_at').gte('created_at', since).limit(20000),
-    eventsReady ? db.from('events').select('user_id, name, created_at').gte('created_at', since).limit(50000) : Promise.resolve({ data: [] }),
+    db.from('events').select('user_id, name, created_at').gte('created_at', since).limit(50000),
     db.from('ai_rejections').select('user_id').gte('created_at', since).limit(5000),
     db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ])
+
+  // Tabel events belum dibuat = kueri di atas mengembalikan error (tanpa perjalanan tambahan untuk memeriksanya).
+  const eventsReady = !events.error
 
   const signIns = new Map<string, string | null>()
   for (const u of authUsers.data?.users ?? []) signIns.set(u.id, u.last_sign_in_at ?? null)

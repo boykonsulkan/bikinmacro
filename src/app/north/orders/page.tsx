@@ -2,13 +2,13 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { PAYMENT_LABEL, PLANS, STATUS_LABEL } from '@/lib/orders/config'
 import type { PaymentStatus, PlanKey, OrderStatus } from '@/lib/orders/config'
-import { getAdminUser, serviceClient } from '@/lib/orders/server'
+import { getAdminForPage, serviceClient } from '@/lib/orders/server'
 import { formatDateTime } from '@/components/pesan/format'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminOrdersPage() {
-  if (!(await getAdminUser())) redirect('/north/login')
+  if (!(await getAdminForPage())) redirect('/north/login')
 
   const db = serviceClient()
   const { data: orders, error } = await db
