@@ -55,6 +55,8 @@ export type RenderInput = {
   recipient: Recipient
   /** Tombol ajakan di bawah isi email, ditumpuk dari atas ke bawah (aman dibaca di HP). */
   ctas?: Cta[]
+  /** Teks kaki email. Bawaan: kalimat undangan (cocok untuk email undangan, bukan untuk email sistem). */
+  footer?: string
 }
 
 export type RenderedEmail = { subject: string; html: string; text: string }
@@ -64,7 +66,8 @@ function fillName(s: string, recipient: Recipient): string {
 }
 
 /** Isi email -> HTML aman. Paragraf dipisah baris kosong, baris tunggal jadi <br>. Semua teks di-escape. */
-export function renderEmail({ subject, body, recipient, ctas }: RenderInput): RenderedEmail {
+export function renderEmail({ subject, body, recipient, ctas, footer }: RenderInput): RenderedEmail {
+  const footerText = footer ?? FOOTER_TEXT
   const finalSubject = oneLine(fillName(subject, recipient))
   const filledBody = fillName(body, recipient).replace(/\r\n/g, '\n').trim()
   const greeting = recipient.name ? `Halo ${recipient.name},` : 'Halo,'
@@ -92,7 +95,7 @@ export function renderEmail({ subject, body, recipient, ctas }: RenderInput): Re
 ${htmlParagraphs}
 ${buttonBlock}
 </td></tr>
-<tr><td style="padding:16px 28px 24px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">${escapeHtml(FOOTER_TEXT)}</td></tr>
+<tr><td style="padding:16px 28px 24px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6b7280;">${escapeHtml(footerText)}</td></tr>
 </table></td></tr></table>
 </body></html>`
 
@@ -103,7 +106,7 @@ ${buttonBlock}
     ...(buttons.length > 0 ? ['', ...buttons.map((b) => `${b.label}: ${b.url}`)] : []),
     '',
     '--',
-    FOOTER_TEXT,
+    footerText,
   ].join('\n')
 
   return { subject: finalSubject, html, text }

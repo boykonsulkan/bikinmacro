@@ -62,6 +62,12 @@ export default async function LoginPage({
         </button>
 
         <p className="text-sm text-center text-muted">
+          <Link href="/auth/forgot" className="text-primary hover:underline">
+            Lupa password?
+          </Link>
+        </p>
+
+        <p className="text-sm text-center text-muted">
           Belum punya akun?{' '}
           <Link href="/auth/register" className="text-primary hover:underline">
             Daftar sekarang

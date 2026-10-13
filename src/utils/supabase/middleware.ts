@@ -40,7 +40,10 @@ export async function updateSession(request: NextRequest) {
   const isNorthLoginRoute = request.nextUrl.pathname === '/north/login'
   const isProtectedRoute = ['/generate', '/history', '/settings'].some(path => request.nextUrl.pathname.startsWith(path))
 
-  if (isAuthRoute && user) {
+  // /auth/reset dikecualikan: orang yang sudah masuk (di perangkat ini) tetap boleh memakai tautan atur ulang password,
+  // kalau nggak, token di bagian # hilang saat dialihkan ke beranda.
+  const isResetRoute = request.nextUrl.pathname.startsWith('/auth/reset')
+  if (isAuthRoute && !isResetRoute && user) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
