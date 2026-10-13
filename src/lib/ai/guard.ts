@@ -144,8 +144,8 @@ export function scanVba(code: string): { blocked: string[]; warnings: string[] }
 }
 
 /** Bungkus teks pengguna sebagai DATA. Tag penutup palsu di dalam teks dibuang supaya nggak bisa "keluar" dari blok. */
-export function wrapUserText(tag: 'permintaan' | 'pesan', text: string): string {
-  const safe = text.replace(/<\/?\s*(?:permintaan|pesan)\b[^>]*>/gi, '').trim()
+export function wrapUserText(tag: 'permintaan' | 'pesan' | 'struktur_file', text: string): string {
+  const safe = text.replace(/<\/?\s*(?:permintaan|pesan|struktur_file)\b[^>]*>/gi, '').trim()
   return `<${tag}>\n${safe}\n</${tag}>`
 }
 

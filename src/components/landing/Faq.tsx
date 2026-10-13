@@ -6,7 +6,7 @@ import { container, eyebrow, sectionHeading } from './ui'
 const ITEMS = [
   {
     q: 'Data saya aman?',
-    a: 'Macro jalan di Excel di laptop kamu sendiri, jadi isi file kerja kamu nggak dikirim ke kami. Yang kami simpan adalah permintaan dan kode macro yang kamu buat, supaya muncul di Riwayat dan bisa kamu lanjutkan. Data itu hanya dipakai tim BikinMacro untuk riset dan pengembangan platform, dan tidak akan pernah disalahgunakan. Teks permintaan juga diproses penyedia AI untuk membuat macro, jadi cukup sebut nama sheet dan kolom, jangan tulis data sensitif seperti nomor rekening atau gaji asli.',
+    a: 'Macro jalan di Excel di laptop kamu sendiri, jadi isi file kerja kamu nggak dikirim ke kami. Kalau kamu melampirkan contoh file, file itu dibaca di browsermu dan nggak diunggah: cuma nama sheet dan header kolom yang kamu centang (plus contoh isi, kalau kamu mau) yang dikirim untuk membuat macro. Yang kami simpan adalah permintaan dan kode macro yang kamu buat, supaya muncul di Riwayat dan bisa kamu lanjutkan. Data itu hanya dipakai tim BikinMacro untuk riset dan pengembangan platform, dan tidak akan pernah disalahgunakan. Teks permintaan juga diproses penyedia AI untuk membuat macro, jadi cukup sebut nama sheet dan kolom, jangan tulis data sensitif seperti nomor rekening atau gaji asli.',
   },
   {
     q: 'Pakai Excel yang mana?',

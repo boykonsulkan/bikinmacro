@@ -7,6 +7,8 @@ import { Copy, Download, RefreshCw, Plus, Check, FileCode2, Home, Zap, ChevronRi
 import { codeToHtml } from 'shiki'
 import MacroChat from './MacroChat'
 import UsageGuide from './UsageGuide'
+import FileAttach from './FileAttach'
+import type { FileContext } from '@/lib/excel/structure'
 import { track } from '@/lib/events/client'
 
 const CATEGORIES = [
@@ -83,6 +85,7 @@ export default function GenerateForm({
   const [chatMax, setChatMax] = useState(maxChatPerGeneration)
   const [viewMode, setViewMode] = useState<'initial' | 'questions' | 'chat'>(resume ? 'chat' : 'initial')
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [fileContext, setFileContext] = useState<FileContext | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
@@ -138,7 +141,7 @@ export default function GenerateForm({
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt, category })
+        body: JSON.stringify({ prompt: fullPrompt, category, ...(fileContext ? { file_context: fileContext } : {}) })
       })
 
       if (!res.ok) {
@@ -223,6 +226,7 @@ export default function GenerateForm({
     setGenerationId(null)
     rememberGeneration(null)
     setAnswers({})
+    setFileContext(null)
     setViewMode('initial')
   }
 
@@ -275,6 +279,8 @@ export default function GenerateForm({
             </div>
           ))}
         </div>
+
+        <FileAttach onChange={setFileContext} />
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-center gap-3">

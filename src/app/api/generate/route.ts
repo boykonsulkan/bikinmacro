@@ -9,6 +9,7 @@ import { buildGenerateSystem, buildGenerateUser } from '@/lib/ai/prompts'
 import { trackEvent } from '@/lib/events/server'
 import { checkAbuse, logRejection, reserveCredit } from '@/lib/ai/server'
 import { serviceClient } from '@/lib/orders/server'
+import { fileContextToPrompt, sanitizeFileContext } from '@/lib/excel/structure'
 import { BUDGET_MESSAGE, isOverBudget, recordUsage } from '@/lib/ai/usage'
 
 // Model cadangan kalau model utama gagal. Model ":free" lama (deepseek-chat:free, gemini-2.0-flash-exp:free)
@@ -56,13 +57,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { prompt, category } = await req.json()
+    const { prompt, category, file_context } = await req.json()
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     }
     if (typeof prompt !== 'string' || prompt.length > AI_LIMITS.promptMax) {
       return NextResponse.json({ error: `Permintaan terlalu panjang (maksimal ${AI_LIMITS.promptMax} karakter).` }, { status: 400 })
+    }
+
+    // Struktur file contoh (opsional). Dibaca di browser; di sini divalidasi ULANG dan dibersihkan, nggak percaya klien.
+    let fileText: string | undefined
+    if (file_context !== undefined && file_context !== null) {
+      const checked = sanitizeFileContext(file_context)
+      if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 })
+      fileText = fileContextToPrompt(checked.value)
     }
 
     // Quota check
@@ -119,7 +128,7 @@ export async function POST(req: Request) {
       : ''
 
     const systemPrompt = buildGenerateSystem(contextSection)
-    const userPrompt = buildGenerateUser(prompt)
+    const userPrompt = buildGenerateUser(prompt, fileText)
 
     let genResult
     try {
@@ -186,7 +195,7 @@ export async function POST(req: Request) {
     }
     releaseCredit = null
 
-    await trackEvent(user.id, 'generate_success', { category: String(category ?? ''), prompt_len: String(prompt).length, ms: Date.now() - startedAt })
+    await trackEvent(user.id, 'generate_success', { category: String(category ?? ''), prompt_len: String(prompt).length, ms: Date.now() - startedAt, with_file: !!fileText })
 
     // Calculate max chats based on plan settings
     const maxChat = settings?.max_chat_per_generation ?? 10

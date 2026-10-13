@@ -21,6 +21,7 @@ export default function PrivasiPage() {
             'Catatan aktivitas: kejadian seperti kapan kamu terakhir masuk, membuat macro, menyalin kode, atau mengunduh file. Isi permintaan tidak disalin ke catatan ini.',
             'Pembayaran: nomor order, paket, dan nominal. Data kartu atau rekening diproses langsung oleh Midtrans dan tidak kami simpan.',
             'Isi file kerja Excel kamu tidak dikirim ke kami. Macro berjalan di Excel di komputermu sendiri.',
+            'Kalau kamu melampirkan contoh file saat membuat macro, file itu dibaca di browsermu dan tidak diunggah. Yang dikirim hanya nama sheet, header kolom, dan jenis isinya, serta contoh isi hanya kalau kamu mencentangnya. Kamu memilih sendiri kolom mana yang ikut. Bagian ini diproses penyedia AI untuk membuat macro dan tidak kami simpan.',
           ],
         },
         {

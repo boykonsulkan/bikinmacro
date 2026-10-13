@@ -9,6 +9,7 @@ export const CLIENT_EVENTS = [
   'download_bas', // mengunduh file .bas
   'guide_tab', // membuka tab panduan (props: tab)
   'history_resume', // melanjutkan chat dari Riwayat
+  'file_attached', // melampirkan contoh file Excel (props: sheets, columns, samples)
 ] as const
 
 /** Kejadian yang hanya dicatat server (hasilnya pasti, nggak bisa dipalsukan klien). */

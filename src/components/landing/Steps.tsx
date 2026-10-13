@@ -12,7 +12,7 @@ const STEPS = [
   },
   {
     title: 'Detailkan datanya',
-    text: 'Sebut nama sheet, kolom, dan hasil yang kamu mau, jadi macro-nya pas dengan datamu.',
+    text: 'Sebut nama sheet dan kolom, atau lampirkan contoh file: header-nya dibaca di browsermu, filenya nggak diunggah.',
     Scene: CekFileScene,
   },
   {
